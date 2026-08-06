@@ -1,0 +1,19 @@
+<template>
+  <div>
+    <h1>404 - 页面未找到</h1>
+    <p>您访问的页面不存在。</p>
+  </div>
+</template>
+
+<script>
+export default {
+  name: 'NotFound'
+};
+</script>
+
+<style scoped>
+  h1 {
+    color: red;
+    text-align: center;
+  }
+</style>

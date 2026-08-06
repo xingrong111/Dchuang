@@ -1,0 +1,41 @@
+/* 全局样式 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Arial', sans-serif;
+  background-color: #ffffff;
+  color: #333;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch; /* 修改为拉伸内容 */
+  min-height: 100vh;
+  width: 100%; /* 确保 body 占满屏幕宽度 */
+}
+
+#app {
+  width: 100%;
+  padding: 1rem;
+}
+
+/* 响应式字体大小 */
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  html {
+    font-size: 13px;
+  }
+}
