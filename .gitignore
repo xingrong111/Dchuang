@@ -1,0 +1,55 @@
+# ============================================================
+# 智绘锡承 - Git 忽略规则（仓库根）
+# ============================================================
+
+# --- 环境变量与敏感配置（严禁提交） ---
+.env
+.env.*
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- 虚拟环境 ---
+venv/
+.venv/
+env/
+ENV/
+
+# --- 测试缓存 ---
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- IDE / 编辑器 ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# --- 数据库与日志 ---
+*.sqlite3
+*.db
+*.log
+logs/
