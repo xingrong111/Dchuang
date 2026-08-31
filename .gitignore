@@ -53,3 +53,9 @@ htmlcov/
 *.db
 *.log
 logs/
+
+# --- 用户上传文件（严禁提交，仅保留 .gitkeep） ---
+backend/app/static/uploads/*
+!backend/app/static/uploads/.gitkeep
+backend/app/static/models/*
+!backend/app/static/models/.gitkeep

@@ -15,6 +15,7 @@ from werkzeug.exceptions import (
     NotFound,
     MethodNotAllowed,
     InternalServerError,
+    RequestEntityTooLarge,
 )
 
 logger = logging.getLogger(__name__)
@@ -111,6 +112,11 @@ def register_error_handlers(app):
     def handle_internal_error(e):
         logger.exception('服务器内部错误: %s', e)
         return _error_response(500, '服务器内部错误，请稍后重试')
+
+    @app.errorhandler(RequestEntityTooLarge)
+    def handle_request_too_large(e):
+        """请求体超过 MAX_CONTENT_LENGTH（50MB）→ 统一 JSON 413"""
+        return _error_response(413, '文件大小超过限制（最大 50MB）')
 
     # --- 自定义业务异常 ---
     @app.errorhandler(ApiException)
