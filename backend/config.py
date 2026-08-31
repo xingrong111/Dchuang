@@ -66,12 +66,17 @@ class Config:
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app', 'static', 'uploads')
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'glb', 'gltf', 'obj', 'stl'}
 
-    # --- 大模型 API（阶段6-9 使用，本阶段仅预留配置） ---
+    # --- 大模型 API（阶段6-9 使用） ---
+    # AI Provider 选择: mock | hunyuan | glm（显式指定；默认 mock 用于开发/测试）
+    AI_PROVIDER = os.getenv('AI_PROVIDER', 'mock')
     TENCENT_HUNYUAN_API_KEY = os.getenv('TENCENT_HUNYUAN_API_KEY', '')
     TENCENT_HUNYUAN_SECRET_KEY = os.getenv('TENCENT_HUNYUAN_SECRET_KEY', '')
     TENCENT_HUNYUAN_BASE_URL = os.getenv(
         'TENCENT_HUNYUAN_BASE_URL', 'https://hunyuan.tencent.com/api/v1'
     )
+    # GLM 多模态（阶段9 预留配置，真实接入时需提供 Key）
+    GLM_API_KEY = os.getenv('GLM_API_KEY', '')
+    GLM_BASE_URL = os.getenv('GLM_BASE_URL', 'https://open.bigmodel.cn/api/paas/v4')
 
     # --- 区块链（阶段10 使用，本阶段仅预留配置） ---
     TENCENT_TBAAS_API_KEY = os.getenv('TENCENT_TBAAS_API_KEY', '')
