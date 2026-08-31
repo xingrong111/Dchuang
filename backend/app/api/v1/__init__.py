@@ -11,7 +11,8 @@ from flask import Blueprint
 
 api_bp = Blueprint('api_v1', __name__)
 
-# 注册各模块路由（本阶段 health + auth + upload；artwork/ai/shop/blockchain 后续阶段加入）
+# 注册各模块路由（本阶段 health + auth + upload + artwork；ai/shop/blockchain 后续阶段加入）
 from app.api.v1 import health  # noqa: E402,F401
 from app.api.v1 import auth  # noqa: E402,F401
 from app.api.v1 import upload  # noqa: E402,F401
+from app.api.v1 import artwork  # noqa: E402,F401
