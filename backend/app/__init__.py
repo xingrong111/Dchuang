@@ -9,7 +9,7 @@ import sys
 from flask import Flask
 
 from config import config
-from app.extensions import db, migrate, cors
+from app.extensions import db, migrate, cors, jwt
 
 
 def create_app(config_name='default'):
@@ -25,6 +25,7 @@ def create_app(config_name='default'):
     db.init_app(app)
     migrate.init_app(app, db)
     cors.init_app(app, resources={r"/*": {"origins": app.config['CORS_ORIGINS']}})
+    jwt.init_app(app)
 
     # --- 导入数据模型（注册到 SQLAlchemy metadata，create_all/migrate 才能识别） ---
     from app import models  # noqa: F401

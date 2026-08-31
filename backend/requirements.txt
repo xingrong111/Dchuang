@@ -31,8 +31,10 @@ python-dotenv>=1.0.0,<2.0.0
 # --- 密码哈希（Werkzeug 随 Flask 安装，此处显式声明） ---
 Werkzeug>=3.0.0,<4.0.0
 
+# --- JWT 认证（阶段3，规范文档 4.1.2 flask_jwt_extended） ---
+Flask-JWT-Extended>=4.6.0,<5.0.0
+
 # --- 后续阶段预留（本次不安装，仅注释备忘） ---
-# JWT 认证（阶段3）: flask-jwt-extended>=4.6.0
 # Redis 缓存（阶段3+）: redis>=5.0.0
 # 限流（规范文档 4.1.2 RATELIMIT）: Flask-Limiter>=3.5.0
 # 腾讯混元 SDK（阶段7）: tencentcloud-sdk-python
