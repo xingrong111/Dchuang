@@ -16,7 +16,7 @@
 # ============================================================
 import re
 
-from flask import request
+from flask import request, session
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 
 from app.api.v1 import api_bp
@@ -135,6 +135,12 @@ def login():
 
     # 生成 JWT Access Token（identity 使用用户 id）
     access_token = create_access_token(identity=str(user.id))
+
+    # 建立安全 Flask Session（阶段5.1: 兼容 el-upload 自动携带 Cookie 的场景）
+    # 身份来源为服务端验证后的 user.id（可信），与 JWT identity 一致
+    session.clear()
+    session['user_id'] = user.id
+    session.permanent = True  # 使用 PERMANENT_SESSION_LIFETIME（24h）
 
     return APIResponse.success(
         data={

@@ -44,13 +44,22 @@ class Config:
     # --- Redis（缓存/限流，阶段3 起使用，本阶段仅预留配置） ---
     REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 
-    # --- JWT（阶段3 实现，本阶段仅预留配置；JWT_SECRET_KEY 勿填真实值） ---
+    # --- JWT（阶段3 实现，规范 4.1.2；JWT_SECRET_KEY 勿填真实值） ---
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'jwt-secret-key-change-in-production')
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
     JWT_TOKEN_LOCATION = ['headers']
     JWT_HEADER_NAME = 'Authorization'
     JWT_HEADER_TYPE = 'Bearer'
+
+    # --- Flask Session（阶段5.1：兼容 el-upload 的 Cookie 认证） ---
+    # 安全基线: HttpOnly + SameSite=Lax（防止 XSS 读取 / CSRF 跨站携带）
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
+    # 开发/测试走 HTTP 本地环境，Secure 默认 False；生产环境强制 True（见 ProductionConfig）
+    SESSION_COOKIE_SECURE = False
+    # Session 有效期（与 JWT 24h 对齐）
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=24)
 
     # --- 文件上传（阶段5 使用，规范 4.1.2） ---
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB
@@ -103,6 +112,8 @@ class ProductionConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
     SQLALCHEMY_ECHO = False
     CORS_ORIGINS = os.getenv('CORS_ORIGINS', '').split(',')
+    # 生产环境 HTTPS: Session Cookie 必须 Secure
+    SESSION_COOKIE_SECURE = True
 
 
 config = {

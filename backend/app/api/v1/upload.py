@@ -16,18 +16,19 @@
 #    - 【安全技术债务】匿名可上传，后续需收紧为 @jwt_required()
 #      （AdvancedMultiModalInput.vue 走 axios 已带 Bearer；CommunityView el-upload 需前端加 headers 或改用封装）
 # 2. /user/upload-avatar:
-#    - 强制 @jwt_required()（身份识别安全优先）
-#    - 从 JWT identity 获取当前用户，更新其 avatar
-#    - 【禁止】接受客户端提交的 user_id/username 等不可信字段
-#    - 注意: 当前 ProfileView.vue 的 el-upload 未带 Bearer，调用将 401；
-#      需 A 同学前端配合（el-upload 加 :headers 或改用 axios 封装）后头像上传才可用
+#    - 双认证兼容（阶段5.1）: JWT Bearer 优先 + Flask Session Cookie 兜底
+#    - 身份仅来自可信来源（JWT identity / session['user_id']），
+#      【禁止】接受客户端提交的 user_id/username 等不可信字段
+#    - 无效/过期 JWT → 401（不降级 Session 绕过）
+#    - 无 JWT 且无 Session → 401
+#    - 兼容性: ProfileView.vue 的 el-upload 原生 XHR 自动携带登录后的
+#      Session Cookie（HttpOnly），无需前端加 Authorization Header 即可安全上传
 # ============================================================
 from flask import request, send_from_directory
-from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from app.api.v1 import api_bp
 from app.extensions import db
-from app.models.user import User
+from app.utils.auth import get_authenticated_user
 from app.utils.exceptions import ValidationError, AuthenticationError
 from app.utils.files import (
     save_upload_file,
@@ -79,23 +80,19 @@ def workshop_upload():
 
 
 @api_bp.route('/user/upload-avatar', methods=['POST'])
-@jwt_required()
 def upload_avatar():
-    """上传当前用户头像
+    """上传当前用户头像（JWT 优先 + Session Cookie 兜底）
 
     请求: multipart/form-data，字段名 file（el-upload 默认字段名）
-    认证: 必须携带 Authorization: Bearer <token>（@jwt_required）
-    身份: 仅从 JWT identity 获取当前用户，【不信任任何客户端提交的用户标识字段】
+    认证（二选一，均可信）:
+      A. Authorization: Bearer <JWT>（axios 场景）
+      B. 浏览器自动携带的 Flask Session Cookie（el-upload 原生 XHR 场景）
+    身份: 仅来自 get_authenticated_user()（JWT identity / session['user_id']），
+          【不信任任何客户端提交的用户标识字段】
     响应: {"code": 200, "message": "头像上传成功", "data": {"url": "/api/static/uploads/..."}}
     """
-    identity = get_jwt_identity()
-    try:
-        user_id = int(identity)
-    except (TypeError, ValueError):
-        raise AuthenticationError('登录凭证无效或已过期')
-
-    user = db.session.get(User, user_id)
-    if not user:
+    user = get_authenticated_user()
+    if user is None:
         raise AuthenticationError('登录凭证无效或已过期')
 
     if 'file' not in request.files:
@@ -105,7 +102,7 @@ def upload_avatar():
     rel_path = save_upload_file(file_storage, subdir='avatars')
     url = build_file_url(rel_path)
 
-    # 更新当前用户头像（身份来自 JWT，非客户端提交）
+    # 更新当前用户头像（身份来自可信认证来源，非客户端提交）
     user.avatar = url
     db.session.commit()
 
