@@ -1,5 +1,5 @@
 # ============================================================
-# 智绘锡承 - AI 多模态 API（阶段9 AI 基础设施）
+# 智绘锡承 - AI 多模态 API（阶段9 AI 基础设施 / 阶段10 安全完善）
 # 位置: backend/app/api/v1/ai.py
 #
 # 接口前缀约定: 前端 Vite 代理剥 /api 后转发，本蓝图路由无 /api 前缀:
@@ -12,7 +12,12 @@
 #
 # Artwork 集成（方案 B）: 任务 SUCCESS 后才创建 Artwork 并回填 task.artwork_id；
 #                         失败不创建（不产生空壳作品）。
+#
+# 安全（阶段10 A1）: input_url 仅允许本项目上传服务产生的 URL（/api/static/uploads/...），
+#                   严格前缀 + 路径解析校验，防 SSRF（真实 Provider 主动访问 input_url 时）。
 # ============================================================
+from urllib.parse import urlparse
+
 from flask import request
 
 from app.api.v1 import api_bp
@@ -37,6 +42,58 @@ from app.utils.response import APIResponse
 
 # 合法任务类型
 TASK_TYPES = {'text_to_3d', 'image_to_3d', 'analyze_style'}
+
+# 本项目上传服务产生的 URL 前缀（utils/files.py build_file_url 唯一输出格式）
+# 例如: /api/static/uploads/images/xxx.png
+UPLOAD_URL_PREFIX = '/api/static/uploads/'
+# 允许的上传子目录
+UPLOAD_SUBDIRS = ('images', 'models', 'avatars')
+
+
+def _validate_input_url(input_url):
+    """严格校验 input_url 必须是本项目上传服务产生的 URL
+
+    安全设计（防 SSRF / 防绕过）:
+    - 必须是无 scheme/host 的相对路径（拒绝 http://、https://、ftp:// 等外部 URL）
+    - 必须以 /api/static/uploads/ 精确前缀开头
+    - 路径中不允许出现 ..（路径穿越）或连续 //
+    - 必须位于允许的上传子目录（images/models/avatars）
+    - 必须有合法文件扩展名
+
+    注意: 不使用简单的 `if 'uploads' in url` 子串判断（易被绕过）。
+    """
+    if not input_url:
+        raise ValidationError('input_url 不能为空')
+
+    value = input_url.strip()
+    if not value:
+        raise ValidationError('input_url 不能为空')
+
+    parsed = urlparse(value)
+    # 拒绝任何带 scheme / netloc 的绝对 URL（外部地址、内网地址）
+    if parsed.scheme or parsed.netloc:
+        raise ValidationError('input_url 必须是本项目的上传路径，不接受外部 URL')
+
+    if not value.startswith(UPLOAD_URL_PREFIX):
+        raise ValidationError('input_url 必须是本项目上传服务产生的路径')
+
+    # 提取前缀之后的相对路径（如 images/xxx.png）
+    rel = value[len(UPLOAD_URL_PREFIX):]
+
+    # 路径穿越 / 连续斜杠防护
+    if '..' in rel.split('/') or '//' in rel:
+        raise ValidationError('input_url 路径不合法')
+
+    # 必须位于允许的上传子目录
+    top_dir = rel.split('/')[0] if '/' in rel else rel
+    if top_dir not in UPLOAD_SUBDIRS:
+        raise ValidationError('input_url 路径不合法')
+
+    # 必须有合法文件扩展名
+    if '.' not in rel.split('/')[-1]:
+        raise ValidationError('input_url 必须指向具体文件')
+
+    return value
 
 
 def _get_authenticated_user_or_401():
@@ -146,8 +203,9 @@ def generate_3d():
 
     if task_type == 'text_to_3d' and not prompt:
         raise ValidationError('text_to_3d 任务必须提供 prompt')
-    if task_type == 'image_to_3d' and not input_url:
-        raise ValidationError('image_to_3d 任务必须提供 input_url')
+    if task_type == 'image_to_3d':
+        # 安全: input_url 必须为本项目上传路径（防 SSRF）
+        input_url = _validate_input_url(input_url)
 
     # 创建任务（PENDING）
     task = AITask(
@@ -205,8 +263,8 @@ def analyze_style():
         raise ValidationError('请求数据不能为空')
 
     input_url = (data.get('input_url') or '').strip()
-    if not input_url:
-        raise ValidationError('风格分析必须提供 input_url（来自 /workshop/upload 返回的 data.url）')
+    # 安全: input_url 必须为本项目上传路径（防 SSRF）
+    input_url = _validate_input_url(input_url)
 
     # 创建分析任务（复用 AITask，状态管理与 generate_3d 一致）
     task = AITask(

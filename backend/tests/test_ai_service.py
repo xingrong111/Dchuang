@@ -115,14 +115,23 @@ class TestMockProvider:
         assert result['error_message'] is None
 
     def test_generate_failed(self):
-        """Mock 生成失败（prompt 含 FAIL）"""
+        """Mock 生成失败（mock_behavior='fail'）"""
         from app.services.mock import MockProvider
 
-        provider = MockProvider()
-        task = self._make_task(prompt='生成失败 FAIL')
+        provider = MockProvider(mock_behavior='fail')
+        task = self._make_task(prompt='正常用户输入不应触发失败')
         result = provider.generate_3d(task)
         assert result['status'] == 'FAILED'
         assert result['error_message']
+
+    def test_generate_not_fooled_by_prompt_keyword(self):
+        """正常用户输入含 'fail' 单词不应触发失败（阶段10 A4）"""
+        from app.services.mock import MockProvider
+
+        provider = MockProvider()  # 默认 success
+        task = self._make_task(prompt='This model should not fail')
+        result = provider.generate_3d(task)
+        assert result['status'] == 'SUCCESS'  # 不再因 prompt 含 fail 误判
 
     def test_analyze_style_success(self):
         """Mock 风格分析: style + features + report"""
@@ -139,8 +148,8 @@ class TestMockProvider:
     def test_analyze_style_failed(self):
         from app.services.mock import MockProvider
 
-        provider = MockProvider()
-        task = self._make_task(task_type='analyze_style', input_url='x', prompt='FAIL')
+        provider = MockProvider(mock_behavior='fail')
+        task = self._make_task(task_type='analyze_style', input_url='/api/static/uploads/images/x.png')
         result = provider.analyze_style(task)
         assert result['status'] == 'FAILED'
 
@@ -149,6 +158,8 @@ class TestMockProvider:
 
         provider = MockProvider()
         assert provider.query_status(self._make_task()) == 'SUCCESS'
+        fail_provider = MockProvider(mock_behavior='fail')
+        assert fail_provider.query_status(self._make_task()) == 'FAILED'
 
 
 class TestServiceFactory:

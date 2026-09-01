@@ -220,15 +220,24 @@ class TestArtworkIntegration:
             task = db.session.get(AITask, task_id)
             assert task.artwork_id == artwork_id
 
-    def test_failed_no_artwork(self, client, app, db):
-        """AI 失败（prompt 含 FAIL）→ 不创建 Artwork，task FAILED"""
+    def test_failed_no_artwork(self, client, app, db, monkeypatch):
+        """AI 失败（注入 fail provider）→ 不创建 Artwork，task FAILED"""
         from app.models.artwork import Artwork
         from app.models.ai_task import AITask
+        from app.services.mock import MockProvider
+
+        # 注入 mock_behavior='fail' 的 Provider（A4: 显式控制，非 prompt 关键字）
+        # 注意: ai.py 中 `from app.services.factory import get_ai_service` 直接引用函数对象，
+        # 因此需 patch ai 模块命名空间中的引用。
+        monkeypatch.setattr(
+            'app.api.v1.ai.get_ai_service',
+            lambda: MockProvider(mock_behavior='fail'),
+        )
 
         _register(client, 'aifail', 'aifail@e.com')
         token = _login(client, 'aifail@e.com')
         resp = client.post('/ai/generate-3d', json={
-            'task_type': 'text_to_3d', 'prompt': '生成 FAIL 失败',
+            'task_type': 'text_to_3d', 'prompt': '正常输入，但 provider 配置为失败',
         }, headers=_auth(token))
         assert resp.status_code == 200
         data = resp.get_json()['data']
@@ -241,3 +250,164 @@ class TestArtworkIntegration:
             task = db.session.get(AITask, data['id'])
             assert task.status == 'FAILED'
             assert task.artwork_id is None
+
+
+class TestInputUrlSecurity:
+    """阶段10 A1: input_url 安全白名单校验"""
+
+    def _setup(self, client):
+        _register(client, 'aisec', 'aisec@e.com')
+        return _login(client, 'aisec@e.com')
+
+    def test_valid_upload_url(self, client, db):
+        """合法上传 URL → 200"""
+        token = self._setup(client)
+        resp = client.post('/ai/generate-3d', json={
+            'task_type': 'image_to_3d',
+            'input_url': '/api/static/uploads/images/ab12cd34_test.png',
+        }, headers=_auth(token))
+        assert resp.status_code == 200
+        assert resp.get_json()['data']['status'] == 'SUCCESS'
+
+    def test_external_https_url_rejected(self, client, db):
+        """外部 HTTPS URL → 400"""
+        token = self._setup(client)
+        resp = client.post('/ai/generate-3d', json={
+            'task_type': 'image_to_3d',
+            'input_url': 'https://evil.example/image.png',
+        }, headers=_auth(token))
+        assert resp.status_code == 400
+        assert resp.get_json()['data'] is None
+
+    def test_localhost_rejected(self, client, db):
+        """localhost → 400"""
+        token = self._setup(client)
+        resp = client.post('/ai/generate-3d', json={
+            'task_type': 'image_to_3d',
+            'input_url': 'http://localhost:8000/image.png',
+        }, headers=_auth(token))
+        assert resp.status_code == 400
+
+    def test_127_0_0_1_rejected(self, client, db):
+        """127.0.0.1 → 400"""
+        token = self._setup(client)
+        resp = client.post('/ai/generate-3d', json={
+            'task_type': 'image_to_3d',
+            'input_url': 'http://127.0.0.1/secret.png',
+        }, headers=_auth(token))
+        assert resp.status_code == 400
+
+    def test_empty_input_url_rejected(self, client, db):
+        """空字符串 → 400"""
+        token = self._setup(client)
+        resp = client.post('/ai/generate-3d', json={
+            'task_type': 'image_to_3d', 'input_url': '',
+        }, headers=_auth(token))
+        assert resp.status_code == 400
+
+    def test_illegal_path_rejected(self, client, db):
+        """非法路径（uploads 子串但前缀错误/路径穿越）→ 400"""
+        token = self._setup(client)
+        # 含 uploads 子串但前缀不对
+        resp = client.post('/ai/generate-3d', json={
+            'task_type': 'image_to_3d',
+            'input_url': '/api/other/uploads/xxx.png',
+        }, headers=_auth(token))
+        assert resp.status_code == 400
+        # 路径穿越
+        resp2 = client.post('/ai/generate-3d', json={
+            'task_type': 'image_to_3d',
+            'input_url': '/api/static/uploads/../config.py',
+        }, headers=_auth(token))
+        assert resp2.status_code == 400
+
+    def test_analyze_style_input_url_security(self, client, db):
+        """analyze-style 同样校验 input_url"""
+        token = self._setup(client)
+        # 合法
+        ok = client.post('/ai/analyze-style', json={
+            'input_url': '/api/static/uploads/images/ab12cd34_test.png',
+        }, headers=_auth(token))
+        assert ok.status_code == 200
+        # 外部 URL
+        bad = client.post('/ai/analyze-style', json={
+            'input_url': 'https://evil.example/x.png',
+        }, headers=_auth(token))
+        assert bad.status_code == 400
+
+
+class TestArtworkDeletionAITask:
+    """阶段10 A2: Artwork 删除后 AITask 保留，artwork_id 置 NULL"""
+
+    def test_artwork_delete_keeps_aitask(self, client, app, db):
+        """删除 Artwork 后 AITask 仍存在且 artwork_id=None"""
+        from app.models.artwork import Artwork
+        from app.models.ai_task import AITask
+
+        _register(client, 'a2del', 'a2del@e.com')
+        token = _login(client, 'a2del@e.com')
+        resp = client.post('/ai/generate-3d', json={
+            'task_type': 'text_to_3d', 'prompt': '生成作品A',
+        }, headers=_auth(token))
+        data = resp.get_json()['data']
+        task_id = data['id']
+        artwork_id = data['artwork_id']
+
+        # 删除 Artwork
+        with app.app_context():
+            artwork = db.session.get(Artwork, artwork_id)
+            db.session.delete(artwork)
+            db.session.commit()
+
+        # AITask 保留且 artwork_id=None
+        with app.app_context():
+            task = db.session.get(AITask, task_id)
+            assert task is not None, 'AITask 应保留'
+            assert task.artwork_id is None, 'artwork_id 应置 NULL'
+            assert task.status == 'SUCCESS'
+
+
+class TestArtworkIdempotency:
+    """阶段10 A3: Artwork 创建幂等性自动化测试"""
+
+    def test_repeated_get_no_duplicate_artwork(self, client, app, db):
+        """连续 GET /ai/tasks/<id> 不重复创建 Artwork（纯只读）"""
+        from app.models.artwork import Artwork
+        from app.models.ai_task import AITask
+
+        _register(client, 'aiidem', 'aiidem@e.com')
+        token = _login(client, 'aiidem@e.com')
+        resp = client.post('/ai/generate-3d', json={
+            'task_type': 'text_to_3d', 'prompt': '幂等性测试作品',
+        }, headers=_auth(token))
+        data = resp.get_json()['data']
+        task_id = data['id']
+        artwork_id = data['artwork_id']
+
+        with app.app_context():
+            assert Artwork.query.count() == 1
+
+        # 连续 GET 5 次
+        for i in range(5):
+            r = client.get(f'/ai/tasks/{task_id}', headers=_auth(token))
+            assert r.status_code == 200
+            assert r.get_json()['data']['status'] == 'SUCCESS'
+            with app.app_context():
+                assert Artwork.query.count() == 1, f'第{i+1}次 GET 后 Artwork 重复创建'
+
+        # task.artwork_id / external_task_id 不变
+        with app.app_context():
+            task = db.session.get(AITask, task_id)
+            assert task.artwork_id == artwork_id
+            assert task.external_task_id is not None
+            updated_after = task.updated_at
+            external_after = task.external_task_id
+
+        # 再次 GET 后仍无变化（纯只读）
+        client.get(f'/ai/tasks/{task_id}', headers=_auth(token))
+        with app.app_context():
+            task = db.session.get(AITask, task_id)
+            assert task.updated_at == updated_after
+            assert task.external_task_id == external_after
+            assert task.artwork_id == artwork_id
+            assert Artwork.query.count() == 1

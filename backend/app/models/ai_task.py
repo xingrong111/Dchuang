@@ -28,7 +28,13 @@ class AITask(db.Model):
     # 归属用户（必填）
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     # 关联作品（可空：任务成功前无作品，成功后回填）
-    artwork_id = db.Column(db.String(64), db.ForeignKey('artworks.id'), nullable=True, index=True)
+    # 阶段10 A2: ON DELETE SET NULL —— Artwork 删除后任务保留，artwork_id 置 NULL（保留 AI 任务历史）
+    artwork_id = db.Column(
+        db.String(64),
+        db.ForeignKey('artworks.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True,
+    )
 
     # --- Provider 信息 ---
     provider = db.Column(db.String(30), nullable=False, default='mock')   # 'mock' | 'hunyuan' | 'glm'
