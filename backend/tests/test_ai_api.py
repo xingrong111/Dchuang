@@ -411,3 +411,145 @@ class TestArtworkIdempotency:
             assert task.external_task_id == external_after
             assert task.artwork_id == artwork_id
             assert Artwork.query.count() == 1
+
+
+class TestAnalyzeStyleArtworkIntegration:
+    """阶段11-C: analyze-style 可选 artwork_id + 分析结果持久化
+
+    覆盖: JWT / Session / 无效 JWT 不降级 /
+          本人作品写入 / 他人作品 403 / 不存在作品 404 / 不传保持旧行为
+    全部使用 MockProvider，禁止真实 API 调用
+    """
+
+    INPUT_URL = '/api/static/uploads/images/ab12cd34_test.png'
+
+    def _create_artwork(self, client, token, title='待分析作品'):
+        """辅助：通过 /workshop/save 创建作品，返回 artwork_id"""
+        resp = client.post('/workshop/save', json={'title': title}, headers=_auth(token))
+        assert resp.status_code == 200
+        return resp.get_json()['data']['id']
+
+    def test_jwt_analyze_style_success(self, client, db):
+        """JWT 认证 analyze-style → 200 + 结构化结果"""
+        _register(client, 'asjwt', 'asjwt@e.com')
+        token = _login(client, 'asjwt@e.com')
+        resp = client.post('/ai/analyze-style', json={
+            'input_url': self.INPUT_URL,
+        }, headers=_auth(token))
+        assert resp.status_code == 200
+        data = resp.get_json()['data']
+        assert data['style']
+        assert isinstance(data['features'], list)
+        assert isinstance(data['report'], dict)
+        assert data['task']['status'] == 'SUCCESS'
+
+    def test_session_analyze_style_success(self, client, db):
+        """Session 认证 analyze-style（无 Authorization）→ 200"""
+        _register(client, 'assess', 'assess@e.com')
+        _login(client, 'assess@e.com')  # Session Cookie 保存在 test client
+        resp = client.post('/ai/analyze-style', json={
+            'input_url': self.INPUT_URL,
+        })
+        assert resp.status_code == 200
+        assert resp.get_json()['data']['task']['status'] == 'SUCCESS'
+
+    def test_invalid_jwt_no_fallback(self, client, db):
+        """伪造 JWT + 有效 Session → 401，不得降级到 Session"""
+        _register(client, 'asforged', 'asforged@e.com')
+        _login(client, 'asforged@e.com')  # 有效 Session 存在
+        resp = client.post('/ai/analyze-style', json={
+            'input_url': self.INPUT_URL,
+        }, headers={'Authorization': 'Bearer invalid.token.value'})
+        assert resp.status_code == 401
+        assert resp.get_json()['code'] == 401
+        assert resp.get_json()['data'] is None
+
+    def test_own_artwork_id_persisted(self, client, app, db):
+        """本人 artwork_id → 200 + artwork.style_analysis 持久化"""
+        from app.models.artwork import Artwork
+        from app.models.ai_task import AITask
+
+        _register(client, 'asown', 'asown@e.com')
+        token = _login(client, 'asown@e.com')
+        artwork_id = self._create_artwork(client, token)
+
+        with app.app_context():
+            assert Artwork.query.count() == 1
+            assert db.session.get(Artwork, artwork_id).style_analysis is None  # 分析前为空
+
+        resp = client.post('/ai/analyze-style', json={
+            'input_url': self.INPUT_URL,
+            'artwork_id': artwork_id,
+        }, headers=_auth(token))
+        assert resp.status_code == 200
+        task_id = resp.get_json()['data']['task']['id']
+
+        with app.app_context():
+            artwork = db.session.get(Artwork, artwork_id)
+            assert artwork.style_analysis is not None
+            assert artwork.style_analysis['status'] == 'SUCCESS'
+            assert artwork.style_analysis['style'] == 'huishan_clay_figure'
+            assert isinstance(artwork.style_analysis['features'], list)
+            assert isinstance(artwork.style_analysis['report'], dict)
+            # 设计决策: task.artwork_id 不回填（其语义是"方案B成功后创建的作品"，
+            # analyze-style 针对已存在作品，仅回写分析结果字段）
+            task = db.session.get(AITask, task_id)
+            assert task.artwork_id is None
+
+    def test_other_user_artwork_rejected(self, client, app, db):
+        """他人 artwork_id → 403，且不写入分析结果"""
+        from app.models.artwork import Artwork
+
+        # 用户 A 创建作品
+        _register(client, 'asowner', 'asowner@e.com')
+        token_a = _login(client, 'asowner@e.com')
+        artwork_id = self._create_artwork(client, token_a, title='A的作品')
+
+        # 用户 B 尝试分析并写入 A 的作品
+        _register(client, 'asother', 'asother@e.com')
+        token_b = _login(client, 'asother@e.com')
+        resp = client.post('/ai/analyze-style', json={
+            'input_url': self.INPUT_URL,
+            'artwork_id': artwork_id,
+        }, headers=_auth(token_b))
+        assert resp.status_code == 403
+        assert resp.get_json()['code'] == 403
+
+        # A 的作品未被修改（禁止越权写入）
+        with app.app_context():
+            artwork = db.session.get(Artwork, artwork_id)
+            assert artwork.style_analysis is None
+
+    def test_nonexistent_artwork_404(self, client, app, db):
+        """不存在的 artwork_id → 404（fail-fast，不产生任务记录）"""
+        from app.models.ai_task import AITask
+
+        _register(client, 'asnone', 'asnone@e.com')
+        token = _login(client, 'asnone@e.com')
+        resp = client.post('/ai/analyze-style', json={
+            'input_url': self.INPUT_URL,
+            'artwork_id': 'nonexistent-artwork-id',
+        }, headers=_auth(token))
+        assert resp.status_code == 404
+        assert resp.get_json()['code'] == 404
+
+        with app.app_context():
+            assert AITask.query.count() == 0  # 无效请求不留下任务记录
+
+    def test_no_artwork_id_keeps_old_behavior(self, client, app, db):
+        """不传 artwork_id → 200 纯分析，不修改/不创建 Artwork"""
+        from app.models.artwork import Artwork
+
+        _register(client, 'asold', 'asold@e.com')
+        token = _login(client, 'asold@e.com')
+        artwork_id = self._create_artwork(client, token, title='既有作品')
+
+        resp = client.post('/ai/analyze-style', json={
+            'input_url': self.INPUT_URL,
+        }, headers=_auth(token))
+        assert resp.status_code == 200
+
+        with app.app_context():
+            assert Artwork.query.count() == 1  # 未创建新作品
+            artwork = db.session.get(Artwork, artwork_id)
+            assert artwork.style_analysis is None  # 既有作品未被修改

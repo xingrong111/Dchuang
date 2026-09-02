@@ -1,17 +1,27 @@
 # ============================================================
-# 智绘锡承 - AI 多模态 API（阶段9 AI 基础设施 / 阶段10 安全完善）
+# 智绘锡承 - AI 多模态 API（阶段9 AI 基础设施 / 阶段10 安全完善 /
+#                         阶段11-C GLM 集成 + Artwork 分析结果持久化 /
+#                         阶段11-F AI 异常任务状态一致性）
 # 位置: backend/app/api/v1/ai.py
 #
 # 接口前缀约定: 前端 Vite 代理剥 /api 后转发，本蓝图路由无 /api 前缀:
 #   POST /ai/generate-3d        （文生3D / 图生3D 任务创建）
 #   GET  /ai/tasks/<task_id>    （任务查询，仅本人）
-#   POST /ai/analyze-style      （风格分析）
+#   POST /ai/analyze-style      （风格分析，支持可选 artwork_id 持久化）
 #
-# 认证: 全部使用 get_authenticated_user()（JWT 优先 + Session 兜底）
-# Provider: 通过 get_ai_service() 工厂选择（本阶段 mock / 真实 Provider 未实现）
+# 认证: 全部使用 get_authenticated_user()（JWT 优先 + Session 兜底；
+#        无效 JWT → 401，绝不降级到 Session）
+# Provider: 通过 get_ai_service() 工厂选择（mock / hunyuan / glm）
 #
 # Artwork 集成（方案 B）: 任务 SUCCESS 后才创建 Artwork 并回填 task.artwork_id；
 #                         失败不创建（不产生空壳作品）。
+#
+# 阶段11-C: analyze-style 支持可选 artwork_id ——
+#   - 不传: 保持原行为（纯分析，不触碰 Artwork）
+#   - 传且作品属于当前用户: 分析成功后写入 artwork.style_analysis
+#   - 传但作品不存在 → 404；属于他人 → 403（禁止越权修改，fail-fast）
+#   - 注意: task.artwork_id 不回填（其语义是"方案B成功后创建的作品"，
+#     analyze-style 针对的是已存在作品，仅回写分析结果字段）
 #
 # 安全（阶段10 A1）: input_url 仅允许本项目上传服务产生的 URL（/api/static/uploads/...），
 #                   严格前缀 + 路径解析校验，防 SSRF（真实 Provider 主动访问 input_url 时）。
@@ -36,6 +46,7 @@ from app.utils.auth import get_authenticated_user
 from app.utils.exceptions import (
     ValidationError,
     AuthenticationError,
+    PermissionError_,
     ResourceNotFoundError,
 )
 from app.utils.response import APIResponse
@@ -134,11 +145,23 @@ def _create_artwork_from_task(task):
 
 
 def _execute_generate_3d(task):
-    """执行 3D 生成（提交 → 状态流转 → 成功后创建 Artwork）"""
+    """执行 3D 生成（提交 → 状态流转 → 成功后创建 Artwork）
+
+    阶段11-F 状态一致性: Provider 抛异常（如 AI_PROVIDER=glm 时
+    GLMService.generate_3d 明确不支持 3D 抛 UnconfiguredProviderError）→
+    与 analyze_style 一致落 FAILED 终态并 commit，避免任务永久停留 PENDING。
+    """
     service = get_ai_service()
 
     transition_status(task, RUNNING)
-    result = service.generate_3d(task)
+    try:
+        result = service.generate_3d(task)
+    except Exception as e:
+        # 记录错误 → 状态机转 FAILED（终态）→ commit 落库 → 继续上抛
+        task.error_message = str(e)
+        transition_status(task, FAILED)
+        db.session.commit()
+        raise
 
     if result.get('status') == FAILED:
         task.error_message = result.get('error_message', 'AI 生成失败')
@@ -159,12 +182,34 @@ def _execute_generate_3d(task):
     return task
 
 
-def _execute_analyze_style(task):
-    """执行风格分析（提交 → 状态流转 → 返回结构化结果）"""
+def _execute_analyze_style(task, artwork=None):
+    """执行风格分析（提交 → 状态流转 → 成功后可选回填 Artwork 分析结果）
+
+    阶段11-C 持久化规则:
+    - 仅当分析成功（SUCCESS）且调用方传入 artwork 时，写入 artwork.style_analysis
+    - 分析失败 / 抛异常 / 未传 artwork → 不修改 Artwork（纯分析，保持原行为）
+    - artwork 的归属校验（本人）由路由在任务创建前完成（fail-fast）
+
+    阶段11-F 状态一致性:
+    - Provider 抛异常（AIServiceError 一族，如 HTTP 非 200 / 超时 / 网络异常 /
+      JSON 解析失败 / 缺字段 / 空 content）→ 任务落 FAILED 终态并 commit，
+      避免任务永久停留 PENDING/RUNNING（僵尸任务）
+    - 异常记录到 task.error_message 后继续上抛，API 保持项目统一错误语义
+      （不吞异常、不伪造 SUCCESS）
+    - 成功路径与 Mock 业务失败（返回 FAILED dict）行为不变
+    """
     service = get_ai_service()
 
     transition_status(task, RUNNING)
-    result = service.analyze_style(task)
+    try:
+        result = service.analyze_style(task)
+    except Exception as e:
+        # AI 服务异常（Service 层已将网络/HTTP/解析等统一转为 AIServiceError）:
+        # 记录错误 → 状态机转 FAILED（终态）→ commit 落库 → 继续上抛
+        task.error_message = str(e)
+        transition_status(task, FAILED)
+        db.session.commit()
+        raise
 
     if result.get('status') == FAILED:
         task.error_message = result.get('error_message', '风格分析失败')
@@ -173,6 +218,11 @@ def _execute_analyze_style(task):
         return task, result
 
     transition_status(task, SUCCESS)
+
+    # 阶段11-C: 分析成功且绑定作品 → 持久化结构化分析结果
+    if artwork is not None:
+        artwork.style_analysis = result
+
     db.session.commit()
     return task, result
 
@@ -251,8 +301,14 @@ def get_task(task_id):
 def analyze_style():
     """风格分析（多模态图片理解）
 
-    认证: get_authenticated_user()
-    输入: {"input_url": "/api/static/uploads/images/xxx.png"}（复用 /workshop/upload 返回的 data.url）
+    认证: get_authenticated_user()（JWT 优先 + Session 兜底）
+    输入: {"input_url": "/api/static/uploads/images/xxx.png",
+           "artwork_id": "可选，作品ID（复用 /workshop/save 返回的 data.id）"}
+    权限（阶段11-C）: 传 artwork_id 时 ——
+      作品不存在 → 404（ResourceNotFoundError）
+      作品属于他人 → 403（PermissionError_，禁止越权修改）
+      作品属于本人 → 分析成功后写入 artwork.style_analysis
+    不传 artwork_id → 保持原行为（纯分析，不触碰任何 Artwork）
     响应: {"code": 200, "message": "...",
            "data": {"task": {...}, "style": "...", "features": [...], "report": {...}}}
     """
@@ -266,11 +322,24 @@ def analyze_style():
     # 安全: input_url 必须为本项目上传路径（防 SSRF）
     input_url = _validate_input_url(input_url)
 
+    # 阶段11-C: 可选 artwork_id —— 先校验归属（fail-fast，越权请求不产生任务记录）
+    artwork_id = (data.get('artwork_id') or '').strip() or None
+    artwork = None
+    if artwork_id:
+        artwork = db.session.get(Artwork, artwork_id)
+        if artwork is None:
+            raise ResourceNotFoundError('作品不存在')
+        if artwork.user_id != user.id:
+            raise PermissionError_('没有权限修改该作品')
+
     # 创建分析任务（复用 AITask，状态管理与 generate_3d 一致）
+    # 阶段11-D: model 必须反映服务层实际调用模型 —— GLMService.model 即 GLM_MODEL 配置值，
+    # 不硬编码 'glm-vision'（配置改变时元数据自动跟随）；Mock 无 model 属性 → 保持 'mock-vision'
+    service = get_ai_service()
     task = AITask(
         user_id=user.id,
-        provider=get_ai_service().provider_name,
-        model='glm-vision' if get_ai_service().provider_name == 'glm' else 'mock-vision',
+        provider=service.provider_name,
+        model=getattr(service, 'model', None) or 'mock-vision',
         task_type='analyze_style',
         input_url=input_url,
         status=PENDING,
@@ -278,7 +347,7 @@ def analyze_style():
     db.session.add(task)
     db.session.commit()
 
-    task, result = _execute_analyze_style(task)
+    task, result = _execute_analyze_style(task, artwork=artwork)
 
     return APIResponse.success(
         data={

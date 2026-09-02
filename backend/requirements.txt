@@ -34,6 +34,9 @@ Werkzeug>=3.0.0,<4.0.0
 # --- JWT 认证（阶段3，规范文档 4.1.2 flask_jwt_extended） ---
 Flask-JWT-Extended>=4.6.0,<5.0.0
 
+# --- HTTP 客户端（阶段11-A: GLM 多模态真实接入，requests 方案，不使用 zhipuai SDK） ---
+requests>=2.31.0,<3.0.0
+
 # --- 后续阶段预留（本次不安装，仅注释备忘） ---
 # Redis 缓存（阶段3+）: redis>=5.0.0
 # 限流（规范文档 4.1.2 RATELIMIT）: Flask-Limiter>=3.5.0

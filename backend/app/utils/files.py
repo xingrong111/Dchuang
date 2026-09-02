@@ -9,6 +9,7 @@
 # 4. 真实文件内容校验（magic bytes，防伪造扩展名；PIL/imghdr 不可用故自实现）
 # 5. 空文件校验
 # ============================================================
+import base64
 import os
 import uuid
 
@@ -163,3 +164,91 @@ def build_file_url(rel_path):
     浏览器请求经代理 → Flask /static/uploads/...（Flask 自带静态服务）。
     """
     return f'/api/static/uploads/{rel_path.lstrip("/")}'
+
+
+# 上传 URL 前缀（与 build_file_url 输出一致）
+UPLOAD_URL_PREFIX = '/api/static/uploads/'
+
+# 图片扩展名 → MIME 类型映射（供 Base64 Data URL 使用）
+IMAGE_MIME_MAP = {
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+}
+
+
+def read_upload_image_as_base64(input_url):
+    """安全读取上传图片并转换为 Base64 Data URL
+
+    用途: GLM 多模态接入（阶段11-A）——将本地上传图片转为
+          data:image/<mime>;base64,<内容> 供 GLM image_url 使用。
+
+    安全路径映射（不使用简单 replace 拼接）:
+      1. 校验 input_url 以 UPLOAD_URL_PREFIX 开头（白名单前缀）
+      2. 提取前缀后的相对路径（如 images/xxx.png）
+      3. 拒绝路径穿越（..）、连续斜杠（//）、绝对路径
+      4. os.path.join(UPLOAD_FOLDER, rel) 得到目标路径
+      5. os.path.abspath 后再次校验必须位于 UPLOAD_FOLDER 内（双保险）
+
+    校验顺序:
+      1. 路径安全 → 2. 文件存在 → 3. 大小限制 → 4. MIME/魔数 → 5. Base64
+
+    Args:
+        input_url: 形如 /api/static/uploads/images/example.png
+
+    Returns:
+        str: data:image/<mime>;base64,<内容>
+
+    Raises:
+        ValidationError: 路径非法/文件不存在/超大小/非图片类型
+    """
+    if not input_url or not input_url.strip():
+        raise ValidationError('input_url 不能为空')
+
+    value = input_url.strip()
+    if not value.startswith(UPLOAD_URL_PREFIX):
+        raise ValidationError('input_url 必须是本项目上传路径')
+
+    # 提取前缀后的相对路径（如 images/xxx.png）
+    rel = value[len(UPLOAD_URL_PREFIX):]
+
+    # 路径穿越 / 连续斜杠 / 绝对路径防护
+    if '..' in rel.split('/') or '//' in rel:
+        raise ValidationError('input_url 路径不合法')
+    if rel.startswith('/') or '\\' in rel:
+        raise ValidationError('input_url 路径不合法')
+
+    from flask import current_app
+    upload_root = os.path.abspath(current_app.config['UPLOAD_FOLDER'])
+    target = os.path.abspath(os.path.join(upload_root, rel.replace('/', os.sep)))
+
+    # 双保险: 最终绝对路径必须位于 UPLOAD_FOLDER 内
+    if not target.startswith(upload_root + os.sep):
+        raise ValidationError('input_url 路径不合法')
+
+    # 文件存在
+    if not os.path.isfile(target):
+        raise ValidationError('图片文件不存在')
+
+    # 文件大小限制（GLM_MAX_IMAGE_SIZE，默认 10MB）
+    max_size = current_app.config.get('GLM_MAX_IMAGE_SIZE', 10 * 1024 * 1024)
+    file_size = os.path.getsize(target)
+    if file_size > max_size:
+        raise ValidationError('图片文件过大，超出 GLM 分析大小限制')
+
+    # 扩展名 → MIME（仅允许图片类型）
+    ext = get_extension(rel.split('/')[-1])
+    mime = IMAGE_MIME_MAP.get(ext)
+    if mime is None:
+        raise ValidationError('仅支持 png/jpg/jpeg/gif/webp 图片类型')
+
+    # 魔数校验（复用已有能力，防伪造扩展名/损坏图片）
+    with open(target, 'rb') as f:
+        validate_file_content(f, ext)
+        f.seek(0)
+        content = f.read()
+
+    b64 = base64.b64encode(content).decode('ascii')
+    return f'data:{mime};base64,{b64}'

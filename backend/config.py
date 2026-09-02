@@ -77,6 +77,12 @@ class Config:
     # GLM 多模态（阶段9 预留配置，真实接入时需提供 Key）
     GLM_API_KEY = os.getenv('GLM_API_KEY', '')
     GLM_BASE_URL = os.getenv('GLM_BASE_URL', 'https://open.bigmodel.cn/api/paas/v4')
+    # GLM 视觉模型（阶段11-A: 默认 glm-4v-flash 免费模型）
+    GLM_MODEL = os.getenv('GLM_MODEL', 'glm-4v-flash')
+    # GLM HTTP 请求超时（秒）
+    GLM_TIMEOUT = int(os.getenv('GLM_TIMEOUT', '30'))
+    # GLM 图片最大字节数（默认 10MB，防超大图片内存占用）
+    GLM_MAX_IMAGE_SIZE = int(os.getenv('GLM_MAX_IMAGE_SIZE', '10485760'))
 
     # --- 区块链（阶段10 使用，本阶段仅预留配置） ---
     TENCENT_TBAAS_API_KEY = os.getenv('TENCENT_TBAAS_API_KEY', '')

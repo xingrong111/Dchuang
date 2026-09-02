@@ -169,7 +169,10 @@ class TestServiceFactory:
     def app(self):
         from app import create_app
 
-        return create_app('testing')
+        app = create_app('testing')
+        # 阶段11-L: 显式指定 Mock，隔离 backend/.env 的 AI_PROVIDER（load_dotenv 会加载真实配置）
+        app.config['AI_PROVIDER'] = 'mock'
+        return app
 
     def test_factory_mock(self, app):
         """AI_PROVIDER=mock → MockProvider"""
