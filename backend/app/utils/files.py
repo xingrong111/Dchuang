@@ -10,12 +10,16 @@
 # 5. 空文件校验
 # ============================================================
 import base64
+import io
 import os
 import uuid
+from urllib.parse import urlparse
 
+import requests
 from werkzeug.utils import secure_filename
 
 from app.utils.exceptions import ValidationError
+from app.utils.exceptions import AIServiceError
 
 # ------------------------------------------------------------
 # 文件魔数签名（真实内容校验，无需 PIL/imghdr）
@@ -252,3 +256,82 @@ def read_upload_image_as_base64(input_url):
 
     b64 = base64.b64encode(content).decode('ascii')
     return f'data:{mime};base64,{b64}'
+
+
+# ------------------------------------------------------------
+# 远程模型产物转存（阶段13-B2: 解决腾讯 COS 预签名 URL 过期）
+# ------------------------------------------------------------
+# 允许下载的模型产物域名后缀（腾讯 COS 产物；防任意 URL 下载/SSRF）
+ALLOWED_DOWNLOAD_HOST_SUFFIXES = ('.tencentcos.cn', '.myqcloud.com')
+# 模型产物最大下载字节（200MB，防超大/内存占用）
+MODEL_MAX_DOWNLOAD_BYTES = 200 * 1024 * 1024
+# 下载超时（秒）: (连接, 读取)
+MODEL_DOWNLOAD_TIMEOUT = (10, 60)
+
+
+def download_model_to_local(remote_url, subdir='models'):
+    """下载远程 3D 模型产物并转存本地（解决第三方签名 URL 过期问题）
+
+    设计（阶段13-B2）:
+    - 仅允许 https + 白名单域名后缀（腾讯 COS: *.tencentcos.cn / *.myqcloud.com），
+      防任意 URL 下载/SSRF
+    - 扩展名白名单（glb/gltf/obj/stl）→ 下载后魔数校验（validate_file_content）
+    - 文件名为纯 UUID（无用户输入、防覆盖/防猜测、无路径穿越）
+    - 大小上限 MODEL_MAX_DOWNLOAD_BYTES（Content-Length 预检 + 实际长度双检）
+
+    Args:
+        remote_url: 第三方模型产物 https 地址（如腾讯 COS 预签名 URL）
+        subdir: UPLOAD_FOLDER 下保存子目录（默认 models）
+
+    Returns:
+        str: 本地稳定访问 URL（/api/static/uploads/models/<uuid>.<ext>）
+
+    Raises:
+        ValidationError: 域名/扩展名/魔数/大小校验失败
+        AIServiceError: 网络下载失败/HTTP 错误
+    """
+    if not remote_url or not str(remote_url).strip():
+        raise ValidationError('模型下载地址不能为空')
+
+    parsed = urlparse(str(remote_url).strip())
+    if parsed.scheme != 'https' or not parsed.hostname:
+        raise ValidationError('模型下载仅允许 https 地址')
+    host = parsed.hostname.lower()
+    if not any(host.endswith(s) for s in ALLOWED_DOWNLOAD_HOST_SUFFIXES):
+        raise ValidationError('模型下载地址不在白名单（仅允许腾讯 COS 产物）')
+
+    # 扩展名（URL 路径最后一段），白名单
+    filename = parsed.path.rstrip('/').split('/')[-1]
+    ext = get_extension(filename)
+    if ext not in MODEL_EXTENSIONS:
+        raise ValidationError(f'模型下载仅支持: {sorted(MODEL_EXTENSIONS)}')
+
+    # 下载（带超时；Content-Length 预检防超大）
+    try:
+        resp = requests.get(remote_url, timeout=MODEL_DOWNLOAD_TIMEOUT)
+        resp.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        raise AIServiceError(f'模型产物下载失败: {e}')
+
+    content = resp.content
+    if not content:
+        raise AIServiceError('模型产物内容为空')
+    if len(content) > MODEL_MAX_DOWNLOAD_BYTES:
+        raise AIServiceError('模型产物超过大小限制')
+
+    # 魔数校验（防伪造扩展名/损坏文件）
+    try:
+        validate_file_content(io.BytesIO(content), ext)
+    except ValidationError:
+        raise
+
+    # 保存（纯 UUID 文件名，防覆盖/防猜测）
+    from flask import current_app
+    upload_root = current_app.config['UPLOAD_FOLDER']
+    target_dir = ensure_upload_dir(os.path.join(upload_root, subdir))
+    name = f'{uuid.uuid4().hex}.{ext}'
+    target_path = os.path.join(target_dir, name)
+    with open(target_path, 'wb') as f:
+        f.write(content)
+
+    return build_file_url(f'{subdir}/{name}')

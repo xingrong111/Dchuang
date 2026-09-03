@@ -84,6 +84,26 @@ class TestStatusMachine:
             transition_status(task, RUNNING)
         assert task.status == 'FAILED'
 
+    def test_invalid_status_value_raises(self):
+        """目标状态非法值（非白名单）→ ValidationError，状态不变"""
+        from app.utils.ai_status import transition_status
+        from app.utils.exceptions import ValidationError
+
+        task = self._make_task('PENDING')
+        with pytest.raises(ValidationError):
+            transition_status(task, 'BOGUS')
+        assert task.status == 'PENDING'
+
+    def test_invalid_current_status_no_transition(self):
+        """当前状态非法（脏数据）→ 任何转换抛 ValidationError（不静默）"""
+        from app.utils.ai_status import transition_status, SUCCESS
+        from app.utils.exceptions import ValidationError
+
+        task = self._make_task('CORRUPTED')
+        with pytest.raises(ValidationError):
+            transition_status(task, SUCCESS)
+        assert task.status == 'CORRUPTED'
+
     def test_invalid_target_status(self):
         """非法目标状态 → 失败"""
         from app.utils.ai_status import transition_status

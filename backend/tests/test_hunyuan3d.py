@@ -108,6 +108,19 @@ class TestHunyuan3DMethods:
             assert hasattr(svc, 'create_image_to_3d') and callable(svc.create_image_to_3d)
             assert hasattr(svc, 'query_task') and callable(svc.query_task)
 
+    def test_strip_data_url_prefix(self):
+        """Base64 处理: data:image/<mime>;base64, 前缀被剥离为纯 Base64（腾讯 ImageBase64 要求）"""
+        from app.services.hunyuan3d import _strip_data_url_prefix
+
+        # 带前缀 → 纯 Base64
+        assert _strip_data_url_prefix('data:image/png;base64,QUJD') == 'QUJD'
+        assert _strip_data_url_prefix('data:image/jpeg;base64,YWJjZA==') == 'YWJjZA=='
+        # 无逗号（已是纯 Base64）→ 原样
+        assert _strip_data_url_prefix('QUJD') == 'QUJD'
+        # 空/None 安全
+        assert _strip_data_url_prefix('') == ''
+        assert _strip_data_url_prefix(None) is None
+
     def test_create_text_to_3d_request(self, app):
         """文生3D 构造提交请求：GenerateType='Normal'(string) + Prompt"""
         from tencentcloud.ai3d.v20250513 import models
@@ -391,6 +404,23 @@ class TestHunyuanProvider:
             assert svc.secret_key == 'test-fake-secret-key'
             assert svc._sdk is not None
 
+    def test_provider_model_default(self, cred_app):
+        """阶段13-B3: HUNYUAN_3D_MODEL 未配置 → model 元数据默认 'hunyuan-3d'"""
+        from app.services.hunyuan import HunyuanService
+
+        with cred_app.app_context():
+            svc = HunyuanService()
+            assert svc.model == 'hunyuan-3d'
+
+    def test_provider_model_follows_config(self, cred_app, monkeypatch):
+        """阶段13-B3: HUNYUAN_3D_MODEL 配置 → model 元数据跟随配置"""
+        from app.services.hunyuan import HunyuanService
+
+        monkeypatch.setitem(cred_app.config, 'HUNYUAN_3D_MODEL', 'hunyuan3d-pro')
+        with cred_app.app_context():
+            svc = HunyuanService()
+            assert svc.model == 'hunyuan3d-pro'
+
     def test_provider_init_missing_credentials_raises(self, app, monkeypatch):
         """无凭据 → UnconfiguredProviderError（不自动 Mock）"""
         from app.services.base import UnconfiguredProviderError
@@ -481,6 +511,27 @@ class TestHunyuanProvider:
             )
 
         task = self._make_task(task_type='text_to_3d', prompt='生成一个茶壶')
+        with cred_app.app_context():
+            svc = HunyuanService()
+            monkeypatch.setattr(svc._sdk.client, 'SubmitHunyuanTo3DProJob', fake_submit)
+            with pytest.raises(AIServiceError) as exc_info:
+                svc.generate_3d(task)
+        assert '提交失败' in str(exc_info.value)
+
+    def test_generate_image_submit_failure_raises(self, cred_app, monkeypatch):
+        """阶段13-B1: 图生3D SDK 提交失败 → AIServiceError（明确异常，不伪造成功）"""
+        from tencentcloud.common.exception import TencentCloudSDKException
+
+        from app.services.hunyuan import HunyuanService
+        from app.utils.exceptions import AIServiceError
+
+        def fake_submit(request):
+            raise TencentCloudSDKException(
+                code='InvalidParameter', message='ImageBase64 参数非法'
+            )
+
+        input_url = _create_image(cred_app, 'hunyuan_image_fail.png')
+        task = self._make_task(task_type='image_to_3d', input_url=input_url)
         with cred_app.app_context():
             svc = HunyuanService()
             monkeypatch.setattr(svc._sdk.client, 'SubmitHunyuanTo3DProJob', fake_submit)

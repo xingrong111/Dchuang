@@ -22,6 +22,7 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 from app.api.v1 import api_bp
 from app.extensions import db
 from app.models.user import User, UserProfile
+from app.services.credit import CreditService
 from app.utils.exceptions import ValidationError, AuthenticationError
 from app.utils.response import APIResponse
 
@@ -94,6 +95,13 @@ def register():
     db.session.add(user)
     try:
         db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise ValidationError('注册失败，请稍后重试')
+
+    # 阶段15-B: 注册自动初始化积分账户（默认赠送 100，幂等）
+    try:
+        CreditService.init_account(user.id)
     except Exception:
         db.session.rollback()
         raise ValidationError('注册失败，请稍后重试')

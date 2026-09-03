@@ -42,6 +42,10 @@ class HunyuanService(BaseAIService):
         self._sdk = Hunyuan3DService(
             secret_id=self.secret_id, secret_key=self.secret_key
         )
+        # 阶段13-B3: model 元数据 —— 反映实际生成模型（HUNYUAN_3D_MODEL 配置或 hunyuan-3d）。
+        # 注意: 请求侧 Model 字段用 _sdk.model（配置原值，空则腾讯服务端默认），
+        # 此处展示名仅用于 AITask.model 元数据记录
+        self.model = current_app.config.get('HUNYUAN_3D_MODEL') or 'hunyuan-3d'
 
     def generate_3d(self, task):
         """3D 生成（文生3D / 图生3D）——真实提交（阶段12-B3-A）

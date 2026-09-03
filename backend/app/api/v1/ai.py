@@ -34,6 +34,17 @@ from app.api.v1 import api_bp
 from app.extensions import db
 from app.models.ai_task import AITask
 from app.models.artwork import Artwork
+from app.models.credit import (
+    CREDIT_TYPE_AI_GENERATE_3D,
+    CREDIT_TYPE_AI_ANALYZE_STYLE,
+    CREDIT_TYPE_REFUND,
+)
+from app.services.ai_task import (
+    refresh_task,
+    fail_timeout_tasks,
+    create_artwork_from_task,
+)
+from app.services.credit import CreditService
 from app.services.factory import get_ai_service
 from app.utils.ai_status import (
     PENDING,
@@ -48,7 +59,7 @@ from app.utils.exceptions import (
     AuthenticationError,
     PermissionError_,
     ResourceNotFoundError,
-    AIServiceError,
+    CreditInsufficientError,
 )
 from app.utils.response import APIResponse
 
@@ -116,6 +127,14 @@ def _get_authenticated_user_or_401():
     return user
 
 
+def _fail_timed_out_tasks():
+    """阶段15-C: 批量超时清理（薄包装 → services.ai_task.fail_timeout_tasks）
+
+    对全部 RUNNING + JobId 且超时的任务置 FAILED（纯本地 DB，无外部调用）
+    """
+    return fail_timeout_tasks()
+
+
 def _get_task_or_404(task_id, user):
     """按 ID 获取任务，仅本人可见；不存在或他人任务 → 404（不泄露存在性）"""
     task = db.session.get(AITask, task_id)
@@ -124,66 +143,68 @@ def _get_task_or_404(task_id, user):
     return task
 
 
-def _maybe_refresh_async_task(task):
-    """阶段12-B3-B: 轮询刷新真实异步任务（hunyuan RUNNING + JobId）
+def _refund_ai(user_id, task_id, cost, label='AI 任务'):
+    """阶段15-B/15-D: AI 任务失败自动退款（幂等: 同 reference 的 REFUND 不重复）
 
-    触发条件: task.status == RUNNING 且 external_task_id（腾讯 JobId）存在，
-    且当前 Provider 提供 query_task 能力（真实异步 Provider）。
-    刷新结果:
-      - 腾讯 SUCCESS → task SUCCESS + result_url + 方案 B 创建 Artwork（仅本次
-        RUNNING→SUCCESS 转换时创建一次，幂等：SUCCESS 终态不再进入刷新）
-      - 腾讯 FAILED  → task FAILED + error_message
-      - 腾讯 RUNNING → 保持 RUNNING（不落终态）
-    查询失败（AIServiceError）: 保持 RUNNING，由下次轮询重试，不误判、不中断读取。
+    在任务 FAILED（业务失败或执行异常落 FAILED 后）调用，将已扣积分退回
     """
-    if task.status != RUNNING or not task.external_task_id:
-        return task
-
-    service = get_ai_service()
-    query = getattr(service, 'query_task', None)
-    if not callable(query):
-        return task  # Mock/GLM 无异步查询能力
-
     try:
-        result = query(task)
-    except AIServiceError as e:
-        # 查询失败（网络/凭据/任务不存在等）：保持 RUNNING，轮询重试
-        current_app.logger.warning('混元3D任务状态查询失败 task=%s: %s', task.id, e)
-        return task
+        CreditService().recharge(
+            user_id, cost,
+            transaction_type=CREDIT_TYPE_REFUND,
+            reference_id=task_id,
+            description=f'{label}失败自动退款',
+        )
+    except Exception:
+        # 退款失败不应掩盖原错误/中断响应——记录日志，交由后续对账处理
+        current_app.logger.error('AI 任务退款失败 user=%s task=%s', user_id, task_id)
 
-    if result.get('status') == SUCCESS:
-        task.result_url = result.get('result_url')
-        transition_status(task, SUCCESS)
-        # Artwork 只在 SUCCESS 之后创建（方案 B；RUNNING→SUCCESS 仅发生一次 → 幂等）
-        _create_artwork_from_task(task)
-        db.session.commit()
-    elif result.get('status') == FAILED:
-        task.error_message = result.get('error_message') or '混元3D任务失败'
-        transition_status(task, FAILED)
-        db.session.commit()
-    # RUNNING → 保持现状（等待下次轮询）
-    return task
+
+def _refund_generate_3d(user_id, task_id, cost):
+    """AI 3D 生成失败退款（薄包装）"""
+    return _refund_ai(user_id, task_id, cost, label='AI 3D 生成')
+
+
+def _refund_style_analyze(user_id, task_id, cost):
+    """AI 风格分析失败退款（薄包装）"""
+    return _refund_ai(user_id, task_id, cost, label='AI 风格分析')
+
+
+def _find_running_duplicate(user_id, task_type, prompt, input_url):
+    """阶段13-C1: 查找进行中的重复生成任务
+
+    去重键: user_id + task_type + （text_to_3d: prompt | image_to_3d: input_url）
+    仅匹配 RUNNING（进行中未终态）任务；SUCCESS/FAILED 终态不拦截（允许重新生成）。
+    RUNNING 即"短时间未完成"的自然窗口（超时保护会把失联 RUNNING 转 FAILED，
+    之后可重新提交）。
+
+    Returns:
+        AITask | None: 命中的已有 RUNNING 任务
+    """
+    query = AITask.query.filter_by(
+        user_id=user_id, task_type=task_type, status=RUNNING
+    )
+    if task_type == 'text_to_3d' and prompt:
+        query = query.filter(AITask.prompt == prompt)
+    elif task_type == 'image_to_3d' and input_url:
+        query = query.filter(AITask.input_url == input_url)
+    else:
+        return None
+    return query.order_by(AITask.created_at.desc()).first()
+
+
+def _maybe_refresh_async_task(task):
+    """阶段15-C: 轮询刷新真实异步任务（薄包装 → services.ai_task.refresh_task）
+
+    行为与重构前完全一致（超时保护/腾讯查询/SUCCESS 产物转存+Artwork/FAILED）；
+    传入当前 Provider（保持 API 层 get_ai_service 语义与测试可注入性）
+    """
+    return refresh_task(task, service=get_ai_service())
 
 
 def _create_artwork_from_task(task):
-    """任务 SUCCESS 后创建 Artwork（方案 B）
-
-    仅设置真实存在的 Artwork 字段，不创建空壳。
-    """
-    artwork = Artwork(
-        user_id=task.user_id,
-        title=(task.prompt or '')[:80] or f'AI生成作品-{task.id[:8]}',
-        description=task.prompt,
-        model_url=task.result_url,
-        model_format='glb' if task.task_type in ('text_to_3d', 'image_to_3d') else None,
-        is_ai_generated=True,
-        ai_model=task.model,
-        ai_prompt=task.prompt,
-    )
-    db.session.add(artwork)
-    db.session.flush()  # 获取 artwork.id
-    task.artwork_id = artwork.id
-    return artwork
+    """任务 SUCCESS 后创建 Artwork（方案 B；薄包装 → services.ai_task）"""
+    return create_artwork_from_task(task)
 
 
 def _execute_generate_3d(task):
@@ -299,7 +320,10 @@ def generate_3d():
 
     prompt = (data.get('prompt') or '').strip()
     input_url = (data.get('input_url') or '').strip()
-    model = (data.get('model') or '').strip() or 'mock-3d'
+    service = get_ai_service()
+    # 阶段13-B3: model 元数据 —— 客户端未指定时按 Provider 实际模型记录
+    # （hunyuan → HUNYUAN_3D_MODEL 配置或 'hunyuan-3d'；mock 无 model 属性 → 'mock-3d'）
+    model = (data.get('model') or '').strip() or getattr(service, 'model', None) or 'mock-3d'
 
     if task_type == 'text_to_3d' and not prompt:
         raise ValidationError('text_to_3d 任务必须提供 prompt')
@@ -307,10 +331,27 @@ def generate_3d():
         # 安全: input_url 必须为本项目上传路径（防 SSRF）
         input_url = _validate_input_url(input_url)
 
-    # 创建任务（PENDING）
+    # 阶段13-C1: 重复生成保护 —— 同用户/同任务类型/同输入（prompt 或 input_url）
+    # 且存在 RUNNING（进行中，未终态）任务 → 直接返回已有任务，不重复提交
+    # （防手抖/网络重试导致重复消耗积分；终态任务不拦截——用户可重新生成）
+    duplicate = _find_running_duplicate(user.id, task_type, prompt, input_url)
+    if duplicate is not None:
+        return APIResponse.success(
+            data=duplicate.to_dict(),
+            message='相同生成任务正在执行中，已返回现有任务',
+            code=200,
+        )
+
+    # 阶段15-B/16-C: 积分 —— 动态成本（AIProviderConfig.cost_config 优先）;
+    # 创建任务前余额检查（不足 402，不建任务）
+    cost = CreditService.get_ai_cost(service.provider_name, 'generate_3d')
+    if CreditService.get_balance(user.id) < cost:
+        raise CreditInsufficientError(f'积分不足（AI 3D 生成需 {cost} 积分）')
+
+    # 创建任务（PENDING; flush 拿 id 供扣费引用，扣费成功一并 commit）
     task = AITask(
         user_id=user.id,
-        provider=get_ai_service().provider_name,
+        provider=service.provider_name,
         model=model,
         task_type=task_type,
         prompt=prompt or None,
@@ -318,14 +359,124 @@ def generate_3d():
         status=PENDING,
     )
     db.session.add(task)
-    db.session.commit()
+    db.session.flush()  # 获取 task.id（事务未提交）
 
-    # 执行（本阶段同步执行，状态机统一管理）
-    task = _execute_generate_3d(task)
+    # 阶段15-B/15-D: 扣费（幂等 reference=task.id；余额不足抛 402 → 事务回滚无任务残留）
+    # description 审计格式 '<TYPE>:<provider>'（15-D: 支持"哪个 AI 模型消耗最多积分"统计）
+    CreditService().consume(
+        user.id, cost,
+        transaction_type=CREDIT_TYPE_AI_GENERATE_3D,
+        reference_id=task.id,
+        description=f'{CREDIT_TYPE_AI_GENERATE_3D}:{service.provider_name}',
+    )
+    # consume 内部已 commit（task + 账户 + 流水原子落库）
+
+    # 执行（同步/异步由 Provider 决定；失败自动退款见 helper）
+    try:
+        task = _execute_generate_3d(task)
+    except Exception:
+        # 提交/执行异常（11-F 已落 FAILED）→ 自动退款，保持错误语义上抛
+        _refund_generate_3d(user.id, task.id, cost)
+        raise
+    if task.status == FAILED:
+        # 业务失败（如腾讯拒绝）→ 自动退款
+        _refund_generate_3d(user.id, task.id, cost)
 
     return APIResponse.success(
         data=task.to_dict(),
         message='AI 生成任务处理完成',
+        code=200,
+    )
+
+
+@api_bp.route('/ai/tasks', methods=['GET'])
+def list_tasks():
+    """AI 任务列表（阶段13-B3，仅本人，倒序分页）
+
+    认证: get_authenticated_user()
+    查询参数: page（默认1）, per_page（默认10, 最大50）
+    说明: 仅返回 DB 当前状态，不逐条触发外部查询（轮询刷新在任务详情
+    GET /ai/tasks/<id> 进行，避免列表 N 次第三方调用）
+    响应: APIResponse.paginated（items=[task.to_dict()]）
+    """
+    user = _get_authenticated_user_or_401()
+
+    # 阶段13-B4: 列表路径触发批量超时清理（纯本地 DB；RUNNING 超时任务 → FAILED）
+    _fail_timed_out_tasks()
+
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    page = max(page, 1)
+    per_page = max(1, min(per_page, 50))
+
+    query = (AITask.query
+             .filter_by(user_id=user.id)
+             .order_by(AITask.created_at.desc()))
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    return APIResponse.paginated(
+        items=[t.to_dict() for t in pagination.items],
+        total=pagination.total,
+        page=page,
+        page_size=per_page,
+        message='获取任务列表成功',
+    )
+
+
+@api_bp.route('/ai/tasks/statistics', methods=['GET'])
+def task_statistics():
+    """AI 任务统计（阶段13-C1/15-D，仅本人）
+
+    认证: get_authenticated_user()
+    说明: 统计当前用户全部 AI 任务状态分布；查询前先执行超时清理保证准确
+    响应: data={total, pending, running, success, failed, success_rate,
+               average_duration}
+          success_rate = success / total（0~1；无任务时为 0）
+          average_duration = SUCCESS 任务平均耗时（秒，updated_at - created_at
+          兼容口径，无单独完成时间字段；无成功任务时为 0）
+    """
+    user = _get_authenticated_user_or_401()
+    # 先清理超时 RUNNING（保证统计口径一致）
+    _fail_timed_out_tasks()
+
+    rows = (
+        db.session.query(AITask.status, db.func.count(AITask.id))
+        .filter_by(user_id=user.id)
+        .group_by(AITask.status)
+        .all()
+    )
+    counts = {status: count for status, count in rows}
+    total = sum(counts.values())
+    success = counts.get(SUCCESS, 0)
+
+    # 阶段15-D: 平均耗时（SUCCESS 任务 updated_at - created_at，秒）
+    average_duration = 0.0
+    if success:
+        success_rows = (
+            db.session.query(AITask.created_at, AITask.updated_at)
+            .filter_by(user_id=user.id, status=SUCCESS)
+            .all()
+        )
+        durations = [
+            (updated - created).total_seconds()
+            for created, updated in success_rows
+            if created and updated and updated >= created
+        ]
+        if durations:
+            average_duration = round(sum(durations) / len(durations), 2)
+
+    data = {
+        'total': total,
+        'pending': counts.get(PENDING, 0),
+        'running': counts.get(RUNNING, 0),
+        'success': success,
+        'failed': counts.get(FAILED, 0),
+        'success_rate': round(success / total, 4) if total else 0.0,
+        'average_duration': average_duration,
+    }
+    return APIResponse.success(
+        data=data,
+        message='获取任务统计成功',
         code=200,
     )
 
@@ -346,6 +497,94 @@ def get_task(task_id):
         data=task.to_dict(),
         message='获取任务成功',
         code=200,
+    )
+
+
+@api_bp.route('/ai/tasks/<task_id>/retry', methods=['POST'])
+def retry_task(task_id):
+    """失败任务重试（阶段15-A，仅本人）
+
+    规则: 仅本人任务（他人/不存在 → 404 不泄露）；仅 FAILED 允许重试
+    （SUCCESS/RUNNING/PENDING → 400）
+    行为: 创建新 AITask（复制 provider/model/task_type/prompt/input_url），
+    重新进入执行流程（RUNNING 推进）；旧任务保持不变（历史留痕）
+    响应: data = 新任务 to_dict
+    """
+    user = _get_authenticated_user_or_401()
+    old = _get_task_or_404(task_id, user)
+
+    if old.status != FAILED:
+        raise ValidationError(f'仅失败任务可重试（当前状态: {old.status}）')
+
+    # 复制原任务生成参数创建新任务（外部任务 ID/结果/错误不复制，全新执行）
+    task = AITask(
+        user_id=user.id,
+        provider=old.provider,      # provider 保持一致
+        model=old.model,
+        task_type=old.task_type,
+        prompt=old.prompt,
+        input_url=old.input_url,
+        status=PENDING,
+    )
+    db.session.add(task)
+    db.session.commit()
+
+    # 重新执行（状态机统一管理：RUNNING → SUCCESS/FAILED）
+    task = _execute_generate_3d(task)
+
+    return APIResponse.success(
+        data=task.to_dict(),
+        message='任务重试已提交',
+        code=200,
+    )
+
+
+@api_bp.route('/ai/history', methods=['GET'])
+def ai_history():
+    """AI 生成历史（阶段15-A，仅本人）
+
+    认证: get_authenticated_user()
+    查询参数: page / per_page（默认10, 最大50）
+    说明: 当前用户全部 AI 任务（生成+分析），按创建时间倒序；
+          每项含 AITask 全字段（id 即 task_id）与 artwork 关联摘要（批量查询，无 N+1）
+    响应: APIResponse.paginated（items=[task.to_dict() + artwork 摘要]）
+    """
+    user = _get_authenticated_user_or_401()
+    # 先清理超时 RUNNING（历史口径一致）
+    _fail_timed_out_tasks()
+
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    page = max(page, 1)
+    per_page = max(1, min(per_page, 50))
+
+    query = (AITask.query
+             .filter_by(user_id=user.id)
+             .order_by(AITask.created_at.desc()))
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    items = [t.to_dict() for t in pagination.items]
+
+    # artwork 关联摘要（批量一次查询）
+    artwork_ids = {item.get('artwork_id') for item in items if item.get('artwork_id')}
+    artwork_map = {}
+    if artwork_ids:
+        artworks = Artwork.query.filter(Artwork.id.in_(artwork_ids)).all()
+        artwork_map = {
+            a.id: {'id': a.id, 'title': a.title, 'thumbnail': a.thumbnail,
+                   'model_url': a.model_url}
+            for a in artworks
+        }
+    for item in items:
+        aid = item.get('artwork_id')
+        item['artwork'] = artwork_map.get(aid) if aid else None
+
+    return APIResponse.paginated(
+        items=items,
+        total=pagination.total,
+        page=page,
+        page_size=per_page,
+        message='获取AI历史成功',
     )
 
 
@@ -384,10 +623,16 @@ def analyze_style():
         if artwork.user_id != user.id:
             raise PermissionError_('没有权限修改该作品')
 
+    # 阶段16-C/15-D: Provider 选择（enabled 运行时治理，fail-fast 不建任务）
+    service = get_ai_service()
+    # 阶段15-D/16-C: 积分 —— 动态成本 + 创建任务前余额检查（不足 402，不建任务）
+    cost = CreditService.get_ai_cost(service.provider_name, 'analyze_style')
+    if CreditService.get_balance(user.id) < cost:
+        raise CreditInsufficientError(f'积分不足（AI 风格分析需 {cost} 积分）')
+
     # 创建分析任务（复用 AITask，状态管理与 generate_3d 一致）
     # 阶段11-D: model 必须反映服务层实际调用模型 —— GLMService.model 即 GLM_MODEL 配置值，
     # 不硬编码 'glm-vision'（配置改变时元数据自动跟随）；Mock 无 model 属性 → 保持 'mock-vision'
-    service = get_ai_service()
     task = AITask(
         user_id=user.id,
         provider=service.provider_name,
@@ -397,9 +642,25 @@ def analyze_style():
         status=PENDING,
     )
     db.session.add(task)
-    db.session.commit()
+    db.session.flush()  # 获取 task.id（事务未提交）
 
-    task, result = _execute_analyze_style(task, artwork=artwork)
+    # 阶段15-D: 扣费（幂等 reference=task.id；不足抛 402 → 事务回滚无任务残留）
+    # description 审计格式 '<TYPE>:<provider>'
+    CreditService().consume(
+        user.id, cost,
+        transaction_type=CREDIT_TYPE_AI_ANALYZE_STYLE,
+        reference_id=task.id,
+        description=f'{CREDIT_TYPE_AI_ANALYZE_STYLE}:{service.provider_name}',
+    )
+
+    # 执行（成功保留消费；失败/异常自动退款）
+    try:
+        task, result = _execute_analyze_style(task, artwork=artwork)
+    except Exception:
+        _refund_style_analyze(user.id, task.id, cost)
+        raise
+    if task.status == FAILED:
+        _refund_style_analyze(user.id, task.id, cost)
 
     return APIResponse.success(
         data={

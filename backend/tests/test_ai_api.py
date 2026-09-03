@@ -668,3 +668,365 @@ class TestAsyncTaskRefresh:
         d = r.get_json()['data']
         assert d['status'] == 'RUNNING'  # 保守保持，由下次轮询重试
         assert d['artwork_id'] is None
+
+    def test_refresh_success_downloads_local(self, client, app, monkeypatch):
+        """阶段13-B2: SUCCESS 时产物下载转存成功 → task/Artwork.model_url 为本地稳定地址"""
+        from app.extensions import db as flask_db
+        from app.models.artwork import Artwork
+
+        tencent_url = ('https://hunyuan-prod-1258344699.cos.ap-guangzhou.tencentcos.cn/'
+                       '3d/output/xxx/model.glb?q-sign-time=123')
+        token, uid = self._register_get_uid(client, 'hy13b2ok')
+        task_id = self._create_running_task(app, uid)
+        monkeypatch.setattr('app.api.v1.ai.get_ai_service', lambda: self._stub_service(
+            result={'status': 'SUCCESS', 'result_url': tencent_url, 'error_message': None},
+        ))
+        monkeypatch.setattr(
+            'app.services.ai_task.download_model_to_local',
+            lambda remote_url: '/api/static/uploads/models/abc123def456.glb',
+        )
+
+        r = client.get(f'/ai/tasks/{task_id}', headers=_auth(token))
+        assert r.status_code == 200
+        d = r.get_json()['data']
+        assert d['status'] == 'SUCCESS'
+        assert d['result_url'] == '/api/static/uploads/models/abc123def456.glb'  # 本地地址
+        with app.app_context():
+            art = flask_db.session.get(Artwork, d['artwork_id'])
+            assert art.model_url == '/api/static/uploads/models/abc123def456.glb'
+
+    def test_refresh_success_download_fail_fallback(self, client, app, monkeypatch):
+        """阶段13-B2: 下载转存失败 → 保留腾讯 result_url 作为 fallback"""
+        from app.extensions import db as flask_db
+        from app.models.artwork import Artwork
+        from app.utils.exceptions import ValidationError
+
+        tencent_url = ('https://hunyuan-prod-1258344699.cos.ap-guangzhou.tencentcos.cn/'
+                       '3d/output/xxx/model.glb?q-sign-time=123')
+        token, uid = self._register_get_uid(client, 'hy13b2fb')
+        task_id = self._create_running_task(app, uid)
+        monkeypatch.setattr('app.api.v1.ai.get_ai_service', lambda: self._stub_service(
+            result={'status': 'SUCCESS', 'result_url': tencent_url, 'error_message': None},
+        ))
+        monkeypatch.setattr(
+            'app.services.ai_task.download_model_to_local',
+            lambda remote_url: (_ for _ in ()).throw(ValidationError('网络不可达')),
+        )
+
+        r = client.get(f'/ai/tasks/{task_id}', headers=_auth(token))
+        assert r.status_code == 200
+        d = r.get_json()['data']
+        assert d['status'] == 'SUCCESS'
+        assert d['result_url'] == tencent_url  # fallback 保留腾讯 URL
+        with app.app_context():
+            art = flask_db.session.get(Artwork, d['artwork_id'])
+            assert art.model_url == tencent_url
+
+    def test_refresh_timeout_marks_failed(self, client, app, monkeypatch):
+        """阶段13-B3: RUNNING 超过 AI_TASK_TIMEOUT_SECONDS → 直接 FAILED（超时保护）"""
+        from datetime import datetime, timedelta
+
+        from app.extensions import db as flask_db
+        from app.models.ai_task import AITask
+
+        app.config['AI_TASK_TIMEOUT_SECONDS'] = 1800
+        token, uid = self._register_get_uid(client, 'hyto')
+        task_id = self._create_running_task(app, uid)
+        # 把 updated_at 拨到 40 分钟前（模拟长时间 RUNNING）
+        with app.app_context():
+            task = flask_db.session.get(AITask, task_id)
+            task.updated_at = datetime.utcnow() - timedelta(minutes=40)
+            flask_db.session.commit()
+
+        r = client.get(f'/ai/tasks/{task_id}', headers=_auth(token))
+        assert r.status_code == 200
+        d = r.get_json()['data']
+        assert d['status'] == 'FAILED'  # 超时保护：不再无限轮询
+        assert '超时' in d['error_message']
+        assert d['artwork_id'] is None
+
+    def test_generate_hunyuan_model_metadata(self, client, app, monkeypatch):
+        """阶段13-B3: hunyuan Provider 生成任务 model 元数据正确（非 'mock-3d'）"""
+        from app.extensions import db as flask_db
+        from app.models.ai_task import AITask
+
+        class StubHunyuanGen:
+            provider_name = 'hunyuan'
+            model = 'hunyuan-3d'
+
+            def generate_3d(self, task):
+                return {'status': 'RUNNING', 'external_task_id': 'job-model-1',
+                        'result_url': None, 'error_message': None}
+
+        monkeypatch.setattr('app.api.v1.ai.get_ai_service', lambda: StubHunyuanGen())
+        _register(client, 'hymodel', 'hymodel@e.com')
+        token = _login(client, 'hymodel@e.com')
+
+        resp = client.post('/ai/generate-3d', json={
+            'task_type': 'text_to_3d', 'prompt': '生成一个紫砂壶',
+        }, headers=_auth(token))
+        assert resp.status_code == 200
+        d = resp.get_json()['data']
+        assert d['provider'] == 'hunyuan'
+        assert d['model'] == 'hunyuan-3d'  # 不再错误记录为 mock-3d
+        assert d['status'] == 'RUNNING'
+        assert d['external_task_id'] == 'job-model-1'
+        # 落库核对
+        with app.app_context():
+            task = flask_db.session.get(AITask, d['id'])
+            assert task.model == 'hunyuan-3d'
+
+
+class TestTaskList:
+    """阶段13-B3: GET /ai/tasks 任务列表（仅本人，分页倒序）"""
+
+    def _create_tasks(self, app, user_id, count=3):
+        from app.extensions import db as flask_db
+        from app.models.ai_task import AITask
+
+        with app.app_context():
+            for i in range(count):
+                task = AITask(
+                    user_id=user_id, provider='mock', model='mock-3d',
+                    task_type='text_to_3d', prompt=f'任务{i}', status='SUCCESS',
+                )
+                flask_db.session.add(task)
+            flask_db.session.commit()
+
+    def test_list_own_tasks_paginated(self, client, app):
+        """本人任务列表 → 分页返回 + 倒序 + 字段完整"""
+        _register(client, 'tl1', 'tl1@e.com')
+        resp = client.post('/auth/login', json={'email': 'tl1@e.com', 'password': 'password123'})
+        data = resp.get_json()['data']
+        self._create_tasks(app, data['id'], count=3)
+
+        r = client.get('/ai/tasks', headers=_auth(data['token']))
+        assert r.status_code == 200
+        body = r.get_json()
+        assert body['code'] == 200
+        pagination = body['meta']['pagination']
+        assert pagination['total'] == 3
+        assert len(body['data']) == 3
+        first = body['data'][0]
+        for key in ('id', 'provider', 'model', 'task_type', 'status', 'external_task_id',
+                    'result_url', 'artwork_id', 'error_message'):
+            assert key in first
+        # 倒序：最新创建在前
+        created = [item['created_at'] for item in body['data']]
+        assert created == sorted(created, reverse=True)
+
+    def test_list_isolated_per_user(self, client, app):
+        """他人任务不可见（隔离）"""
+        _register(client, 'tl2a', 'tl2a@e.com')
+        r1 = client.post('/auth/login', json={'email': 'tl2a@e.com', 'password': 'password123'})
+        self._create_tasks(app, r1.get_json()['data']['id'], count=2)
+
+        _register(client, 'tl2b', 'tl2b@e.com')
+        r2 = client.post('/auth/login', json={'email': 'tl2b@e.com', 'password': 'password123'})
+        data2 = r2.get_json()['data']
+
+        r = client.get('/ai/tasks', headers=_auth(data2['token']))
+        assert r.get_json()['meta']['pagination']['total'] == 0  # 用户 B 看不到用户 A 的任务
+
+    def test_list_empty(self, client, app):
+        """无任务 → total 0 + 空 items"""
+        _register(client, 'tl3', 'tl3@e.com')
+        resp = client.post('/auth/login', json={'email': 'tl3@e.com', 'password': 'password123'})
+        data = resp.get_json()['data']
+        r = client.get('/ai/tasks', headers=_auth(data['token']))
+        assert r.status_code == 200
+        body = r.get_json()
+        assert body['meta']['pagination']['total'] == 0
+        assert body['data'] == []
+
+    def test_list_no_auth_401(self, client):
+        """未登录 → 401"""
+        r = client.get('/ai/tasks')
+        assert r.status_code == 401
+
+    def test_list_pagination_params(self, client, app):
+        """分页参数生效（page/per_page）"""
+        _register(client, 'tl4', 'tl4@e.com')
+        resp = client.post('/auth/login', json={'email': 'tl4@e.com', 'password': 'password123'})
+        data = resp.get_json()['data']
+        self._create_tasks(app, data['id'], count=5)
+
+        r = client.get('/ai/tasks?page=2&per_page=2', headers=_auth(data['token']))
+        body = r.get_json()
+        pagination = body['meta']['pagination']
+        assert pagination['total'] == 5
+        assert len(body['data']) == 2
+        assert pagination['page'] == 2
+
+    def test_list_triggers_timeout_cleanup(self, client, app):
+        """阶段13-B4: 列表路径批量超时清理 —— RUNNING+JobId 超时任务 → FAILED"""
+        from datetime import datetime, timedelta
+
+        from app.extensions import db as flask_db
+        from app.models.ai_task import AITask
+
+        app.config['AI_TASK_TIMEOUT_SECONDS'] = 1800
+        _register(client, 'tlto', 'tlto@e.com')
+        resp = client.post('/auth/login', json={'email': 'tlto@e.com', 'password': 'password123'})
+        data = resp.get_json()['data']
+
+        # 造两个 RUNNING+JobId 任务：一个超时（40 分钟前），一个正常（刚提交）
+        with app.app_context():
+            old = AITask(user_id=data['id'], provider='hunyuan', model='hunyuan-3d',
+                         task_type='text_to_3d', prompt='旧任务', status='RUNNING',
+                         external_task_id='job-old')
+            old.updated_at = datetime.utcnow() - timedelta(minutes=40)
+            fresh = AITask(user_id=data['id'], provider='hunyuan', model='hunyuan-3d',
+                           task_type='text_to_3d', prompt='新任务', status='RUNNING',
+                           external_task_id='job-fresh')
+            flask_db.session.add_all([old, fresh])
+            flask_db.session.commit()
+            old_id, fresh_id = old.id, fresh.id
+
+        r = client.get('/ai/tasks', headers=_auth(data['token']))
+        assert r.status_code == 200
+        body = r.get_json()['data']
+        by_id = {item['id']: item for item in body}
+        # 超时任务已被清理为 FAILED
+        assert by_id[old_id]['status'] == 'FAILED'
+        assert '超时' in by_id[old_id]['error_message']
+        # 正常任务保持 RUNNING
+        assert by_id[fresh_id]['status'] == 'RUNNING'
+        # DB 核对
+        with app.app_context():
+            assert flask_db.session.get(AITask, old_id).status == 'FAILED'
+            assert flask_db.session.get(AITask, fresh_id).status == 'RUNNING'
+
+
+class TestTaskStatistics:
+    """阶段13-C1: GET /ai/tasks/statistics 任务统计（仅本人）"""
+
+    def _seed_tasks(self, app, user_id, statuses):
+        from app.extensions import db as flask_db
+        from app.models.ai_task import AITask
+
+        with app.app_context():
+            for i, status in enumerate(statuses):
+                task = AITask(
+                    user_id=user_id, provider='mock', model='mock-3d',
+                    task_type='text_to_3d', prompt=f'统计任务{i}', status=status,
+                )
+                flask_db.session.add(task)
+            flask_db.session.commit()
+
+    def test_statistics_counts(self, client, app):
+        """统计: total/success/running/failed/pending + success_rate"""
+        _register(client, 'stat1', 'stat1@e.com')
+        resp = client.post('/auth/login', json={'email': 'stat1@e.com', 'password': 'password123'})
+        data = resp.get_json()['data']
+        # 6 SUCCESS + 1 RUNNING + 2 FAILED + 1 PENDING = 10
+        self._seed_tasks(app, data['id'], ['SUCCESS'] * 6 + ['RUNNING'] + ['FAILED'] * 2 + ['PENDING'])
+
+        r = client.get('/ai/tasks/statistics', headers=_auth(data['token']))
+        assert r.status_code == 200
+        d = r.get_json()['data']
+        assert d['total'] == 10
+        assert d['success'] == 6
+        assert d['running'] == 1
+        assert d['failed'] == 2
+        assert d['pending'] == 1
+        assert d['success_rate'] == round(6 / 10, 4) == 0.6
+
+    def test_statistics_empty(self, client, app):
+        """无任务 → total 0 + success_rate 0（不除零）"""
+        _register(client, 'stat2', 'stat2@e.com')
+        resp = client.post('/auth/login', json={'email': 'stat2@e.com', 'password': 'password123'})
+        data = resp.get_json()['data']
+        r = client.get('/ai/tasks/statistics', headers=_auth(data['token']))
+        d = r.get_json()['data']
+        assert d['total'] == 0
+        assert d['success_rate'] == 0.0
+
+    def test_statistics_isolated_per_user(self, client, app):
+        """统计仅含本人任务"""
+        _register(client, 'stat3a', 'stat3a@e.com')
+        r1 = client.post('/auth/login', json={'email': 'stat3a@e.com', 'password': 'password123'})
+        self._seed_tasks(app, r1.get_json()['data']['id'], ['SUCCESS'] * 5)
+
+        _register(client, 'stat3b', 'stat3b@e.com')
+        r2 = client.post('/auth/login', json={'email': 'stat3b@e.com', 'password': 'password123'})
+        data2 = r2.get_json()['data']
+        r = client.get('/ai/tasks/statistics', headers=_auth(data2['token']))
+        assert r.get_json()['data']['total'] == 0
+
+    def test_statistics_no_auth_401(self, client):
+        """未登录 → 401"""
+        r = client.get('/ai/tasks/statistics')
+        assert r.status_code == 401
+
+
+class TestDuplicateGeneration:
+    """阶段13-C1: 重复生成保护（同用户/同类型/同输入 RUNNING 任务命中）"""
+
+    def _stub_running(self):
+        """Provider stub: 生成返回 RUNNING（模拟 hunyuan 异步）"""
+        class StubHunyuanGen:
+            provider_name = 'hunyuan'
+            model = 'hunyuan-3d'
+
+            def generate_3d(self, task):
+                return {'status': 'RUNNING', 'external_task_id': 'job-dup-1',
+                        'result_url': None, 'error_message': None}
+
+        return StubHunyuanGen()
+
+    def test_same_prompt_returns_existing_running(self, client, app, monkeypatch):
+        """同用户同 prompt 重复提交（首个 RUNNING 中）→ 返回已有任务，不新建"""
+        monkeypatch.setattr('app.api.v1.ai.get_ai_service', lambda: self._stub_running())
+        _register(client, 'dup1', 'dup1@e.com')
+        token = _login(client, 'dup1@e.com')
+
+        body = {'task_type': 'text_to_3d', 'prompt': '生成惠山泥人阿福'}
+        r1 = client.post('/ai/generate-3d', json=body, headers=_auth(token))
+        r2 = client.post('/ai/generate-3d', json=body, headers=_auth(token))
+        assert r1.status_code == 200 and r2.status_code == 200
+        d1 = r1.get_json()['data']
+        d2 = r2.get_json()['data']
+        assert d1['id'] == d2['id']  # 同一任务
+        assert d1['status'] == 'RUNNING'
+        assert '正在执行' in r2.get_json()['message']
+        with app.app_context():
+            from app.models.ai_task import AITask
+            assert AITask.query.count() == 1  # 仅 1 条（未重复创建）
+
+    def test_different_prompt_creates_new(self, client, app, monkeypatch):
+        """不同 prompt → 创建新任务"""
+        monkeypatch.setattr('app.api.v1.ai.get_ai_service', lambda: self._stub_running())
+        _register(client, 'dup2', 'dup2@e.com')
+        token = _login(client, 'dup2@e.com')
+
+        r1 = client.post('/ai/generate-3d', json={'task_type': 'text_to_3d', 'prompt': '紫砂壶'},
+                         headers=_auth(token))
+        r2 = client.post('/ai/generate-3d', json={'task_type': 'text_to_3d', 'prompt': '惠山泥人'},
+                         headers=_auth(token))
+        assert r1.get_json()['data']['id'] != r2.get_json()['data']['id']
+
+    def test_terminal_task_allows_regenerate(self, client, app, monkeypatch):
+        """终态（SUCCESS）同 prompt → 允许重新生成（不拦截）"""
+        from app.extensions import db as flask_db
+        from app.models.ai_task import AITask
+
+        monkeypatch.setattr('app.api.v1.ai.get_ai_service', lambda: self._stub_running())
+        _register(client, 'dup3', 'dup3@e.com')
+        resp = client.post('/auth/login', json={'email': 'dup3@e.com', 'password': 'password123'})
+        data = resp.get_json()['data']
+
+        # 预置一个 SUCCESS 终态同 prompt 任务
+        with app.app_context():
+            done = AITask(user_id=data['id'], provider='hunyuan', model='hunyuan-3d',
+                          task_type='text_to_3d', prompt='重复测试', status='SUCCESS')
+            flask_db.session.add(done)
+            flask_db.session.commit()
+            done_id = done.id  # 会话内读取，避免 detached refresh
+
+        r = client.post('/ai/generate-3d', json={'task_type': 'text_to_3d', 'prompt': '重复测试'},
+                        headers=_auth(data['token']))
+        assert r.status_code == 200
+        d = r.get_json()['data']
+        assert d['id'] != done_id  # 新建任务（终态不拦截）
+        assert d['status'] == 'RUNNING'

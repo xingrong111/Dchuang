@@ -69,6 +69,13 @@ class AIServiceError(ApiException):
         super().__init__(message=message, code=503)
 
 
+class CreditInsufficientError(ApiException):
+    """平台积分不足（402 Payment Required，阶段15-B）"""
+
+    def __init__(self, message='积分不足，请先充值'):
+        super().__init__(message=message, code=402)
+
+
 def _error_response(code, message, errors=None):
     """构造统一错误 JSON"""
     body = {
