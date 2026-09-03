@@ -91,6 +91,8 @@ class Config:
     # AI 后台任务 Worker（阶段15-C）: 默认关闭（开发/测试不自动启动，避免多 Worker）
     AI_WORKER_ENABLED = os.getenv('AI_WORKER_ENABLED', 'false').strip().lower() in ('1', 'true', 'yes')
     AI_WORKER_INTERVAL_SECONDS = int(os.getenv('AI_WORKER_INTERVAL_SECONDS', '30'))
+    # 后台管理员用户 ID（阶段16-A: 配置式，逗号分隔，如 '1,2'；不新增 User 角色字段）
+    ADMIN_USER_IDS = os.getenv('ADMIN_USER_IDS', '')
     # GLM 多模态（阶段9 预留配置，真实接入时需提供 Key）
     GLM_API_KEY = os.getenv('GLM_API_KEY', '')
     GLM_BASE_URL = os.getenv('GLM_BASE_URL', 'https://open.bigmodel.cn/api/paas/v4')
