@@ -553,3 +553,118 @@ class TestAnalyzeStyleArtworkIntegration:
             assert Artwork.query.count() == 1  # 未创建新作品
             artwork = db.session.get(Artwork, artwork_id)
             assert artwork.style_analysis is None  # 既有作品未被修改
+
+
+class TestAsyncTaskRefresh:
+    """阶段12-B3-B: GET /ai/tasks/<id> 轮询刷新真实异步任务（hunyuan RUNNING + JobId）"""
+
+    def _register_get_uid(self, client, name):
+        _register(client, name, f'{name}@e.com')
+        resp = client.post('/auth/login', json={
+            'email': f'{name}@e.com', 'password': 'password123',
+        })
+        data = resp.get_json()['data']
+        return data['token'], data['id']
+
+    def _create_running_task(self, app, user_id, job_id='job-test-001'):
+        """直接落库一个 RUNNING + JobId 的 hunyuan 异步任务"""
+        from app.extensions import db
+        from app.models.ai_task import AITask
+
+        with app.app_context():
+            task = AITask(
+                user_id=user_id, provider='hunyuan', model='hunyuan3d-pro',
+                task_type='text_to_3d', prompt='生成惠山泥人阿福',
+                status='RUNNING', external_task_id=job_id,
+            )
+            db.session.add(task)
+            db.session.commit()
+            return task.id
+
+    def _stub_service(self, result=None, error=None):
+        """构造带 query_task 能力的假 hunyuan Provider"""
+        from app.utils.exceptions import AIServiceError
+
+        class StubHunyuan:
+            provider_name = 'hunyuan'
+
+            def query_task(self, task):
+                if error:
+                    raise AIServiceError(error)
+                return result
+
+        return StubHunyuan()
+
+    def test_refresh_success_creates_artwork_once(self, client, app, monkeypatch):
+        """SUCCESS 刷新: task→SUCCESS + result_url + 建 Artwork；重复 GET 幂等"""
+        from app.models.artwork import Artwork
+
+        token, uid = self._register_get_uid(client, 'hyrsucc')
+        task_id = self._create_running_task(app, uid)
+        monkeypatch.setattr('app.api.v1.ai.get_ai_service', lambda: self._stub_service(
+            result={'status': 'SUCCESS', 'result_url': 'https://cos.example.com/model.glb',
+                    'error_message': None},
+        ))
+
+        r = client.get(f'/ai/tasks/{task_id}', headers=_auth(token))
+        assert r.status_code == 200
+        d = r.get_json()['data']
+        assert d['status'] == 'SUCCESS'
+        assert d['result_url'] == 'https://cos.example.com/model.glb'
+        assert d['artwork_id']  # Artwork 只在 SUCCESS 后创建
+        with app.app_context():
+            assert Artwork.query.count() == 1
+
+        # SUCCESS 终态不再进入刷新 → 重复 GET 不重复创建 Artwork（幂等）
+        client.get(f'/ai/tasks/{task_id}', headers=_auth(token))
+        client.get(f'/ai/tasks/{task_id}', headers=_auth(token))
+        with app.app_context():
+            assert Artwork.query.count() == 1
+
+    def test_refresh_failed(self, client, app, monkeypatch):
+        """FAILED 刷新: task→FAILED + error_message；不建 Artwork"""
+        from app.models.artwork import Artwork
+
+        token, uid = self._register_get_uid(client, 'hyrsfail')
+        task_id = self._create_running_task(app, uid)
+        monkeypatch.setattr('app.api.v1.ai.get_ai_service', lambda: self._stub_service(
+            result={'status': 'FAILED', 'result_url': None,
+                    'error_message': '生成失败：内容不合规'},
+        ))
+
+        r = client.get(f'/ai/tasks/{task_id}', headers=_auth(token))
+        assert r.status_code == 200
+        d = r.get_json()['data']
+        assert d['status'] == 'FAILED'
+        assert d['error_message'] == '生成失败：内容不合规'
+        assert d['artwork_id'] is None
+        with app.app_context():
+            assert Artwork.query.count() == 0
+
+    def test_refresh_still_running(self, client, app, monkeypatch):
+        """RUNNING 刷新: 任务保持 RUNNING（轮询中，不落终态）"""
+        token, uid = self._register_get_uid(client, 'hyrsrun')
+        task_id = self._create_running_task(app, uid)
+        monkeypatch.setattr('app.api.v1.ai.get_ai_service', lambda: self._stub_service(
+            result={'status': 'RUNNING', 'result_url': None, 'error_message': None},
+        ))
+
+        r = client.get(f'/ai/tasks/{task_id}', headers=_auth(token))
+        assert r.status_code == 200
+        d = r.get_json()['data']
+        assert d['status'] == 'RUNNING'
+        assert d['artwork_id'] is None
+
+    def test_refresh_query_failure_keeps_running(self, client, app, monkeypatch):
+        """腾讯查询异常: 任务保持 RUNNING + 接口仍 200（不中断读取、不误判）"""
+        token, uid = self._register_get_uid(client, 'hyrserr')
+        task_id = self._create_running_task(app, uid)
+        monkeypatch.setattr('app.api.v1.ai.get_ai_service', lambda: self._stub_service(
+            error='腾讯混元3D任务查询失败: RequestTimeout',
+        ))
+
+        r = client.get(f'/ai/tasks/{task_id}', headers=_auth(token))
+        assert r.status_code == 200
+        d = r.get_json()['data']
+        assert d['status'] == 'RUNNING'  # 保守保持，由下次轮询重试
+        assert d['artwork_id'] is None

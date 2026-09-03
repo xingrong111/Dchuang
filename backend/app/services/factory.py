@@ -4,7 +4,8 @@
 #
 # 规则（严格）:
 #   1. AI_PROVIDER=mock      → MockProvider（显式启用）
-#   2. AI_PROVIDER=hunyuan   → HunyuanService 骨架（Key 缺失或未实现 → 明确错误）
+#   2. AI_PROVIDER=hunyuan   → HunyuanService 真实 3D Provider（阶段12-B2；
+#                              凭据缺失 → 明确错误）
 #   3. AI_PROVIDER=glm       → GLMService 真实实现（阶段11-B；Key 缺失 → 明确错误）
 #   4. AI_PROVIDER 未配置    → 开发环境默认 mock，但必须明确记录 provider=mock
 #
@@ -36,15 +37,14 @@ def get_ai_service():
         return MockProvider()
 
     if provider == 'hunyuan':
-        # 真实 Provider 尚未实现 → 明确错误，不自动 Mock
-        api_key = current_app.config.get('TENCENT_HUNYUAN_API_KEY')
-        if not api_key:
+        # 真实 Provider（阶段12-B2）: SecretId/SecretKey 缺失 → 明确错误，不自动 Mock
+        secret_id = current_app.config.get('TENCENT_SECRET_ID')
+        secret_key = current_app.config.get('TENCENT_SECRET_KEY')
+        if not secret_id or not secret_key:
             raise UnconfiguredProviderError(
-                'AI_PROVIDER=hunyuan 但未配置 TENCENT_HUNYUAN_API_KEY'
+                'AI_PROVIDER=hunyuan 但未配置 TENCENT_SECRET_ID / TENCENT_SECRET_KEY'
             )
-        raise UnconfiguredProviderError(
-            'hunyuan Provider 尚未实现（本阶段仅基础设施）'
-        )
+        return HunyuanService()
 
     if provider == 'glm':
         # 真实 Provider（阶段11-B）: Key 缺失 → 明确错误，不自动 Mock

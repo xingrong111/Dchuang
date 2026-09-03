@@ -74,6 +74,15 @@ class Config:
     TENCENT_HUNYUAN_BASE_URL = os.getenv(
         'TENCENT_HUNYUAN_BASE_URL', 'https://hunyuan.tencent.com/api/v1'
     )
+    # 腾讯混元生3D（阶段12-B: AI3D 产品真实接入，SDK 封装）
+    # 凭据来自腾讯云控制台-CAM 访问管理（SecretId/SecretKey 成对），仅存 .env（gitignored）
+    TENCENT_SECRET_ID = os.getenv('TENCENT_SECRET_ID', '')
+    TENCENT_SECRET_KEY = os.getenv('TENCENT_SECRET_KEY', '')
+    # AI3D 服务地域与产品 endpoint（SDK 默认按产品生成，一般无需覆盖）
+    TENCENT_HUNYUAN_REGION = os.getenv('TENCENT_HUNYUAN_REGION', 'ap-guangzhou')
+    TENCENT_HUNYUAN_ENDPOINT = os.getenv('TENCENT_HUNYUAN_ENDPOINT', '')
+    # 生3D 模型名（按开通产品配置，如 hunyuan3d 系列；留空使用服务端默认）
+    HUNYUAN_3D_MODEL = os.getenv('HUNYUAN_3D_MODEL', '')
     # GLM 多模态（阶段9 预留配置，真实接入时需提供 Key）
     GLM_API_KEY = os.getenv('GLM_API_KEY', '')
     GLM_BASE_URL = os.getenv('GLM_BASE_URL', 'https://open.bigmodel.cn/api/paas/v4')

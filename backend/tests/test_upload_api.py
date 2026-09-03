@@ -100,11 +100,21 @@ def _upload_bytes(client, url, content, filename, headers=None):
 
 
 class TestWorkshopUpload:
-    """POST /workshop/upload（暂不要求 JWT）"""
+    """POST /workshop/upload（阶段12-A: 需要认证，JWT Bearer + Session Cookie 双认证）"""
+
+    @pytest.fixture(autouse=True)
+    def auth(self, client):
+        """每个测试前注册登录：获取 JWT（Bearer 场景）并建立 Session（兜底场景）"""
+        self.token, self.user = _register_and_login(client)
+
+    def _bearer(self):
+        return {'Authorization': f'Bearer {self.token}'}
 
     def test_upload_image_success(self, client, app):
-        """正常上传 PNG 图片 → data.url"""
-        resp = _upload_bytes(client, '/workshop/upload', _png_bytes(), 'photo.png')
+        """登录用户上传 PNG 图片 → data.url"""
+        resp = _upload_bytes(
+            client, '/workshop/upload', _png_bytes(), 'photo.png', headers=self._bearer()
+        )
         assert resp.status_code == 200
         data = resp.get_json()
         assert data['code'] == 200
@@ -115,15 +125,42 @@ class TestWorkshopUpload:
         assert os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], rel))
 
     def test_upload_model_success(self, client):
-        """正常上传 GLB 3D 模型 → models 子目录"""
-        resp = _upload_bytes(client, '/workshop/upload', _glb_bytes(), 'model.glb')
+        """登录用户上传 GLB 3D 模型 → models 子目录"""
+        resp = _upload_bytes(
+            client, '/workshop/upload', _glb_bytes(), 'model.glb', headers=self._bearer()
+        )
         assert resp.status_code == 200
         data = resp.get_json()
         assert data['data']['url'].startswith('/api/static/uploads/models/')
 
+    def test_upload_anonymous_401(self, client):
+        """阶段12-A: 匿名上传（无 Bearer 且无 Session）→ 401"""
+        with client.session_transaction() as sess:
+            sess.clear()
+        resp = _upload_bytes(client, '/workshop/upload', _png_bytes(), 'anon.png')
+        assert resp.status_code == 401
+        data = resp.get_json()
+        assert data['code'] == 401
+        assert data['data'] is None
+
+    def test_upload_session_success(self, client, app):
+        """阶段12-A: Session Cookie 认证（登录后无 Authorization）→ 200（el-upload 兼容）"""
+        resp = _upload_bytes(client, '/workshop/upload', _png_bytes(), 'sess.png')
+        assert resp.status_code == 200
+        assert resp.get_json()['data']['url'].startswith('/api/static/uploads/images/')
+
+    def test_upload_invalid_token_401(self, client):
+        """无效 Bearer Token → 401（不降级 Session）"""
+        resp = _upload_bytes(
+            client, '/workshop/upload', _png_bytes(), 'x.png',
+            headers={'Authorization': 'Bearer bad.token.value'},
+        )
+        assert resp.status_code == 401
+
     def test_upload_no_file_field(self, client):
         """缺少 file 字段 → 400"""
-        resp = client.post('/workshop/upload', data={}, content_type='multipart/form-data')
+        resp = client.post('/workshop/upload', data={}, content_type='multipart/form-data',
+                           headers=self._bearer())
         assert resp.status_code == 400
         data = resp.get_json()
         assert data['code'] == 400
@@ -131,22 +168,22 @@ class TestWorkshopUpload:
 
     def test_upload_empty_filename(self, client):
         """空文件名 → 400"""
-        resp = _upload_bytes(client, '/workshop/upload', _png_bytes(), '')
+        resp = _upload_bytes(client, '/workshop/upload', _png_bytes(), '', headers=self._bearer())
         assert resp.status_code == 400
         assert resp.get_json()['code'] == 400
 
     def test_upload_disallowed_extension(self, client):
         """不允许的扩展名（.txt / .exe）→ 400"""
-        resp = _upload_bytes(client, '/workshop/upload', b'hello', 'evil.txt')
+        resp = _upload_bytes(client, '/workshop/upload', b'hello', 'evil.txt', headers=self._bearer())
         assert resp.status_code == 400
         assert resp.get_json()['code'] == 400
 
-        resp = _upload_bytes(client, '/workshop/upload', b'MZ\x90\x00', 'evil.exe')
+        resp = _upload_bytes(client, '/workshop/upload', b'MZ\x90\x00', 'evil.exe', headers=self._bearer())
         assert resp.status_code == 400
 
     def test_upload_fake_extension(self, client):
         """伪造扩展名（.png 但内容不是图片）→ 400 魔数校验"""
-        resp = _upload_bytes(client, '/workshop/upload', _fake_png_bytes(), 'fake.png')
+        resp = _upload_bytes(client, '/workshop/upload', _fake_png_bytes(), 'fake.png', headers=self._bearer())
         assert resp.status_code == 400
         data = resp.get_json()
         assert data['code'] == 400
@@ -154,19 +191,14 @@ class TestWorkshopUpload:
 
     def test_upload_empty_file(self, client):
         """空文件（0 字节）→ 400"""
-        resp = _upload_bytes(client, '/workshop/upload', b'', 'empty.png')
+        resp = _upload_bytes(client, '/workshop/upload', b'', 'empty.png', headers=self._bearer())
         assert resp.status_code == 400
         assert resp.get_json()['code'] == 400
-
-    def test_upload_no_jwt_required(self, client):
-        """当前暂不要求 JWT：匿名可上传（安全技术债务，测试记录现状）"""
-        resp = _upload_bytes(client, '/workshop/upload', _png_bytes(), 'anon.png')
-        assert resp.status_code == 200
 
     def test_upload_path_traversal_sanitized(self, client, app):
         """路径穿越文件名被 secure_filename 清洗，且不越界写入"""
         resp = _upload_bytes(
-            client, '/workshop/upload', _png_bytes(), '..\\..\\evil.png'
+            client, '/workshop/upload', _png_bytes(), '..\\..\\evil.png', headers=self._bearer()
         )
         assert resp.status_code == 200
         data = resp.get_json()
@@ -182,13 +214,13 @@ class TestWorkshopUpload:
 
     def test_upload_url_unique(self, client):
         """两次上传生成不同 URL（UUID 防覆盖）"""
-        r1 = _upload_bytes(client, '/workshop/upload', _png_bytes(), 'a.png')
-        r2 = _upload_bytes(client, '/workshop/upload', _png_bytes(), 'b.png')
+        r1 = _upload_bytes(client, '/workshop/upload', _png_bytes(), 'a.png', headers=self._bearer())
+        r2 = _upload_bytes(client, '/workshop/upload', _png_bytes(), 'b.png', headers=self._bearer())
         assert r1.get_json()['data']['url'] != r2.get_json()['data']['url']
 
     def test_uploaded_file_servable(self, client):
         """上传后 data.url 可经 /static/uploads/<path> 访问（send_from_directory）"""
-        resp = _upload_bytes(client, '/workshop/upload', _png_bytes(), 'photo.png')
+        resp = _upload_bytes(client, '/workshop/upload', _png_bytes(), 'photo.png', headers=self._bearer())
         url = resp.get_json()['data']['url']
         # /api/static/uploads/xxx → Flask /static/uploads/xxx
         static_path = url.replace('/api/static/', '/static/')
@@ -282,7 +314,11 @@ class TestUploadSecurity:
 
     def test_upload_response_no_sensitive_fields(self, client):
         """上传响应仅含 url，无敏感信息"""
-        resp = _upload_bytes(client, '/workshop/upload', _png_bytes(), 'a.png')
+        token, _ = _register_and_login(client, username='securer', email='secure@example.com')
+        resp = _upload_bytes(
+            client, '/workshop/upload', _png_bytes(), 'a.png',
+            headers={'Authorization': f'Bearer {token}'},
+        )
         body = resp.get_data(as_text=True)
         assert 'password' not in body
         assert 'token' not in body

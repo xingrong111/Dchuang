@@ -37,8 +37,10 @@ Flask-JWT-Extended>=4.6.0,<5.0.0
 # --- HTTP 客户端（阶段11-A: GLM 多模态真实接入，requests 方案，不使用 zhipuai SDK） ---
 requests>=2.31.0,<3.0.0
 
+# --- 腾讯云 SDK（阶段12-B: 混元生3D AI3D 产品真实接入，TC3 签名由 SDK 内置） ---
+tencentcloud-sdk-python>=3.1.166,<4.0.0
+
 # --- 后续阶段预留（本次不安装，仅注释备忘） ---
 # Redis 缓存（阶段3+）: redis>=5.0.0
 # 限流（规范文档 4.1.2 RATELIMIT）: Flask-Limiter>=3.5.0
-# 腾讯混元 SDK（阶段7）: tencentcloud-sdk-python
 # 测试（规范文档 第五章）: pytest>=8.0.0

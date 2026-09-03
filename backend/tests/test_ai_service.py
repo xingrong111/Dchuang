@@ -185,15 +185,29 @@ class TestServiceFactory:
             assert service.provider_name == 'mock'
 
     def test_factory_hunyuan_without_key_error(self, app):
-        """AI_PROVIDER=hunyuan 但 Key 缺失 → 明确错误（不自动 Mock）"""
+        """AI_PROVIDER=hunyuan 但 SecretId/SecretKey 缺失 → 明确错误（不自动 Mock）"""
         from app.services.factory import get_ai_service
         from app.services.base import UnconfiguredProviderError
 
         app.config['AI_PROVIDER'] = 'hunyuan'
-        app.config['TENCENT_HUNYUAN_API_KEY'] = ''
+        app.config['TENCENT_SECRET_ID'] = ''
+        app.config['TENCENT_SECRET_KEY'] = ''
         with app.app_context():
             with pytest.raises(UnconfiguredProviderError):
                 get_ai_service()
+
+    def test_factory_hunyuan_with_credentials(self, app):
+        """阶段12-B2: AI_PROVIDER=hunyuan + 凭据存在 → HunyuanService（真实 Provider）"""
+        from app.services.factory import get_ai_service
+        from app.services.hunyuan import HunyuanService
+
+        app.config['AI_PROVIDER'] = 'hunyuan'
+        app.config['TENCENT_SECRET_ID'] = 'test-fake-secret-id'
+        app.config['TENCENT_SECRET_KEY'] = 'test-fake-secret-key'
+        with app.app_context():
+            service = get_ai_service()
+            assert isinstance(service, HunyuanService)
+            assert service.provider_name == 'hunyuan'
 
     def test_factory_glm_without_key_error(self, app):
         """AI_PROVIDER=glm 但 Key 缺失 → 明确错误（不自动 Mock）"""

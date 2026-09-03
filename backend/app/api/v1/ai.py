@@ -28,7 +28,7 @@
 # ============================================================
 from urllib.parse import urlparse
 
-from flask import request
+from flask import request, current_app
 
 from app.api.v1 import api_bp
 from app.extensions import db
@@ -48,6 +48,7 @@ from app.utils.exceptions import (
     AuthenticationError,
     PermissionError_,
     ResourceNotFoundError,
+    AIServiceError,
 )
 from app.utils.response import APIResponse
 
@@ -123,6 +124,47 @@ def _get_task_or_404(task_id, user):
     return task
 
 
+def _maybe_refresh_async_task(task):
+    """阶段12-B3-B: 轮询刷新真实异步任务（hunyuan RUNNING + JobId）
+
+    触发条件: task.status == RUNNING 且 external_task_id（腾讯 JobId）存在，
+    且当前 Provider 提供 query_task 能力（真实异步 Provider）。
+    刷新结果:
+      - 腾讯 SUCCESS → task SUCCESS + result_url + 方案 B 创建 Artwork（仅本次
+        RUNNING→SUCCESS 转换时创建一次，幂等：SUCCESS 终态不再进入刷新）
+      - 腾讯 FAILED  → task FAILED + error_message
+      - 腾讯 RUNNING → 保持 RUNNING（不落终态）
+    查询失败（AIServiceError）: 保持 RUNNING，由下次轮询重试，不误判、不中断读取。
+    """
+    if task.status != RUNNING or not task.external_task_id:
+        return task
+
+    service = get_ai_service()
+    query = getattr(service, 'query_task', None)
+    if not callable(query):
+        return task  # Mock/GLM 无异步查询能力
+
+    try:
+        result = query(task)
+    except AIServiceError as e:
+        # 查询失败（网络/凭据/任务不存在等）：保持 RUNNING，轮询重试
+        current_app.logger.warning('混元3D任务状态查询失败 task=%s: %s', task.id, e)
+        return task
+
+    if result.get('status') == SUCCESS:
+        task.result_url = result.get('result_url')
+        transition_status(task, SUCCESS)
+        # Artwork 只在 SUCCESS 之后创建（方案 B；RUNNING→SUCCESS 仅发生一次 → 幂等）
+        _create_artwork_from_task(task)
+        db.session.commit()
+    elif result.get('status') == FAILED:
+        task.error_message = result.get('error_message') or '混元3D任务失败'
+        transition_status(task, FAILED)
+        db.session.commit()
+    # RUNNING → 保持现状（等待下次轮询）
+    return task
+
+
 def _create_artwork_from_task(task):
     """任务 SUCCESS 后创建 Artwork（方案 B）
 
@@ -166,6 +208,14 @@ def _execute_generate_3d(task):
     if result.get('status') == FAILED:
         task.error_message = result.get('error_message', 'AI 生成失败')
         transition_status(task, FAILED)
+        db.session.commit()
+        return task
+
+    # 阶段12-B3-A: 异步任务已提交（真实混元3D）→ 回填外部 JobId，
+    # 任务保持 RUNNING（等待后续轮询查询），不创建空壳 Artwork
+    if result.get('status') == RUNNING:
+        if result.get('external_task_id'):
+            task.external_task_id = result['external_task_id']
         db.session.commit()
         return task
 
@@ -289,6 +339,8 @@ def get_task(task_id):
     """
     user = _get_authenticated_user_or_401()
     task = _get_task_or_404(task_id, user)
+    # 阶段12-B3-B: 真实异步任务（RUNNING + JobId）读取时触发一次轮询刷新
+    _maybe_refresh_async_task(task)
 
     return APIResponse.success(
         data=task.to_dict(),

@@ -11,10 +11,11 @@
 #   → 响应必须为 {"code":200,"message":...,"data":{"url":"..."}}
 #
 # 认证设计（重要）:
-# 1. /workshop/upload:
-#    - 暂不要求 JWT（兼容 CommunityView.vue 的 el-upload 直发，其不带 Bearer）
-#    - 【安全技术债务】匿名可上传，后续需收紧为 @jwt_required()
-#      （AdvancedMultiModalInput.vue 走 axios 已带 Bearer；CommunityView el-upload 需前端加 headers 或改用封装）
+# 1. /workshop/upload（阶段12-A: 修复匿名上传技术债务）:
+#    - 复用 get_authenticated_user() 双认证（JWT Bearer 优先 + Flask Session Cookie 兜底）
+#    - 无效/过期 JWT → 401（不降级 Session 绕过）；无 JWT 且无 Session → 401
+#    - 兼容性: 前端 el-upload 原生 XHR 自动携带登录后的 Session Cookie（HttpOnly），
+#      无需前端加 Authorization Header 即可安全上传；axios 场景带 Bearer 同样可用
 # 2. /user/upload-avatar:
 #    - 双认证兼容（阶段5.1）: JWT Bearer 优先 + Flask Session Cookie 兜底
 #    - 身份仅来自可信来源（JWT identity / session['user_id']），
@@ -60,8 +61,15 @@ def workshop_upload():
     请求: multipart/form-data，字段名 file（前端 workshop.js: formData.append('file', file)）
     响应: {"code": 200, "message": "上传成功", "data": {"url": "/api/static/uploads/..."}}
 
-    认证说明: 暂不要求 JWT（兼容 CommunityView el-upload）；安全技术债务见文件头注释。
+    认证（阶段12-A: 修复匿名上传技术债务）:
+    - get_authenticated_user() 双认证（JWT Bearer 优先 + Session Cookie 兜底）
+    - 未认证（无有效 JWT 且无有效 Session）→ 401
+    - 上传后的图片归属/安全校验沿用既有逻辑，身份不写入存储（上传记录由后续阶段补充）
     """
+    user = get_authenticated_user()
+    if user is None:
+        raise AuthenticationError('登录凭证无效或已过期')
+
     if 'file' not in request.files:
         raise ValidationError('未接收到文件（字段名应为 file）')
 
