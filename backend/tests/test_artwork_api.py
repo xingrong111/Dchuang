@@ -425,3 +425,100 @@ class TestRegression:
         resp = client.post('/user/upload-avatar', data={'file': (io.BytesIO(png), 'a.png')},
                            content_type='multipart/form-data')
         assert resp.status_code == 200
+
+
+class TestListEnhance:
+    """阶段14-A: 列表过滤/排序/用户隔离"""
+
+    def _seed(self, client):
+        """作者 A: 1 公开 AI + 1 公开手工 + 1 私有 AI"""
+        _register(client, 'lena', 'lena@e.com')
+        token_a = _login(client, 'lena@e.com')
+        _save(client, payload=_create_payload(
+            title='AI公开', is_ai_generated=True), token=token_a)
+        _save(client, payload=_create_payload(
+            title='手工公开', is_ai_generated=False), token=token_a)
+        _save(client, payload=_create_payload(
+            title='AI私有', is_ai_generated=True, is_public=False), token=token_a)
+        return token_a
+
+    def _ids(self, resp):
+        return {w['id']: w['title'] for w in resp.get_json()['data']}
+
+    def test_filter_ai_generated_true(self, client):
+        """is_ai_generated=true → 仅 AI 公开作品"""
+        self._seed(client)
+        resp = client.get('/workshop/works?is_ai_generated=true')
+        titles = list(self._ids(resp).values())
+        assert 'AI公开' in titles
+        assert '手工公开' not in titles
+        assert 'AI私有' not in titles  # 私有隔离
+
+    def test_filter_ai_generated_false(self, client):
+        """is_ai_generated=false → 仅手工公开作品"""
+        self._seed(client)
+        resp = client.get('/workshop/works?is_ai_generated=false')
+        titles = list(self._ids(resp).values())
+        assert titles == ['手工公开']
+
+    def test_filter_author_id_isolates_private(self, client):
+        """author_id 过滤: 仅该作者公开作品（私有不可见/他人不可见）"""
+        from app.models.user import User
+
+        self._seed(client)
+        with client.application.app_context():
+            author = User.query.filter_by(username='lena').first()
+            author_id = author.id
+
+        _register(client, 'lenb', 'lenb@e.com')
+        token_b = _login(client, 'lenb@e.com')
+        _save(client, payload=_create_payload(title='B的公开', is_ai_generated=False), token=token_b)
+
+        resp = client.get(f'/workshop/works?author_id={author_id}')
+        titles = list(self._ids(resp).values())
+        assert 'AI公开' in titles
+        assert '手工公开' in titles
+        assert 'AI私有' not in titles       # A 的私有不可见
+        assert 'B的公开' not in titles      # 只含 A（author_id 精确）
+
+    def test_sort_latest(self, client):
+        """sort=latest → 按创建倒序（最新在前）"""
+        _register(client, 'lenc', 'lenc@e.com')
+        token = _login(client, 'lenc@e.com')
+        for i in range(3):
+            _save(client, payload=_create_payload(title=f'作品{i}'), token=token)
+        resp = client.get('/workshop/works?sort=latest')
+        titles = [w['title'] for w in resp.get_json()['data']]
+        assert titles == ['作品2', '作品1', '作品0']  # 倒序（最新创建在前）
+
+
+class TestDetailEnhance:
+    """阶段14-A: 详情社区字段（comment_count/current_user_status 预留）"""
+
+    def test_detail_community_fields_anonymous(self, client, app):
+        """匿名详情: comment_count=0 + current_user_status 预留结构 + like_count"""
+        _register(client, 'deta', 'deta@e.com')
+        token = _login(client, 'deta@e.com')
+        art_id = _save(client, token=token).get_json()['data']['id']
+
+        # 匿名独立 client 访问公开作品
+        anon = app.test_client()
+        resp = anon.get(f'/workshop/works/{art_id}')
+        assert resp.status_code == 200
+        d = resp.get_json()['data']
+        assert d['comment_count'] == 0
+        assert d['current_user_status'] == {'liked': False, 'collected': False, 'is_author': False}
+        assert 'like_count' in d and 'view_count' in d
+        assert d['author'] is not None  # 作者信息
+
+    def test_detail_community_fields_author(self, client):
+        """作者登录详情: current_user_status.is_author=True"""
+        _register(client, 'detb', 'detb@e.com')
+        token = _login(client, 'detb@e.com')
+        art_id = _save(client, token=token).get_json()['data']['id']
+
+        resp = client.get(f'/workshop/works/{art_id}', headers=_auth_headers(token))
+        assert resp.status_code == 200
+        status = resp.get_json()['data']['current_user_status']
+        assert status['is_author'] is True
+        assert status['liked'] is False and status['collected'] is False
