@@ -11,7 +11,9 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-fileConfig(config.config_file_name)
+# disable_existing_loggers=False: 进程内执行迁移（如测试）时不禁用应用已有 logger，
+# 避免迁移后应用日志（AI Worker 等）失效；独立 CLI 迁移场景无副作用。
+fileConfig(config.config_file_name, disable_existing_loggers=False)
 logger = logging.getLogger('alembic.env')
 
 

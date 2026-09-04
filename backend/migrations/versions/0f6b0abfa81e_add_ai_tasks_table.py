@@ -33,8 +33,10 @@ def upgrade():
     sa.Column('error_message', sa.Text(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['artwork_id'], ['artworks.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    # 显式命名 FK: 后续 1bfd534f0826 需按名重建 artwork FK(ondelete SET NULL)，
+    # 无名约束在 SQLite batch / MySQL 自动命名下均无法按 fk_ai_tasks_artwork_id 定位
+    sa.ForeignKeyConstraint(['artwork_id'], ['artworks.id'], name='fk_ai_tasks_artwork_id'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], name='fk_ai_tasks_user_id'),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('ai_tasks', schema=None) as batch_op:
