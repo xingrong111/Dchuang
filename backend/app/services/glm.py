@@ -40,6 +40,89 @@ STYLE_SYSTEM_PROMPT = (
     '"suggestions": ["建议"]}}'
 )
 
+_ERROR_FIELD_MAX_LENGTH = 300
+_REQUEST_ID_MAX_LENGTH = 128
+_SENSITIVE_VALUE_PATTERNS = (
+    re.compile(r"(?i)\bbearer\s+[^\s,;'\"]+"),
+    re.compile(
+        r"(?i)\b(authorization|api[_-]?key|token|secret|password)\b"
+        r"(\s*[:=]\s*|\s+)[^\s,;'\"]+"
+    ),
+)
+
+
+def _sanitize_error_value(value, max_length=_ERROR_FIELD_MAX_LENGTH):
+    """将 Provider 错误字段规范为短文本，并屏蔽明显凭据。"""
+    if value is None or isinstance(value, (dict, list, tuple, set)):
+        return None
+
+    text = re.sub(r'[\r\n\t]+', ' ', str(value)).strip()
+    if not text:
+        return None
+
+    text = _SENSITIVE_VALUE_PATTERNS[0].sub('Bearer [REDACTED]', text)
+    text = _SENSITIVE_VALUE_PATTERNS[1].sub(
+        lambda match: f'{match.group(1)}=[REDACTED]', text
+    )
+    if len(text) > max_length:
+        text = f'{text[:max_length]}...'
+    return text
+
+
+def _get_response_header(response, names):
+    """按不区分大小写的方式读取白名单响应头。"""
+    headers = getattr(response, 'headers', None)
+    if not headers:
+        return None
+
+    lowered = {str(key).lower(): value for key, value in headers.items()}
+    for name in names:
+        value = lowered.get(name)
+        if value is not None:
+            return value
+    return None
+
+
+def _build_http_error_message(response):
+    """从非 200 响应提取有限的诊断字段，不保留完整响应体。"""
+    error_code = None
+    provider_message = None
+    request_id = None
+
+    try:
+        body = response.json()
+    except (TypeError, ValueError):
+        body = None
+
+    if isinstance(body, dict):
+        error = body.get('error')
+        if not isinstance(error, dict):
+            error = {}
+        error_code = error.get('code') or body.get('code')
+        provider_message = error.get('message') or body.get('message')
+        request_id = body.get('request_id') or error.get('request_id')
+
+    if not request_id:
+        request_id = _get_response_header(
+            response, ('x-request-id', 'request-id', 'x-zhipu-request-id')
+        )
+
+    details = []
+    safe_code = _sanitize_error_value(error_code, 64)
+    safe_message = _sanitize_error_value(provider_message)
+    safe_request_id = _sanitize_error_value(request_id, _REQUEST_ID_MAX_LENGTH)
+    if safe_code:
+        details.append(f'code={safe_code}')
+    if safe_message:
+        details.append(f'message={safe_message}')
+    if safe_request_id:
+        details.append(f'request_id={safe_request_id}')
+
+    message = f'GLM API 返回错误状态: HTTP {response.status_code}'
+    if details:
+        message = f'{message}, {", ".join(details)}'
+    return message
+
 
 def _extract_json(text):
     """从 GLM 响应中提取 JSON
@@ -178,7 +261,7 @@ class GLMService(BaseAIService):
 
         # 4) 非 200 处理
         if resp.status_code != 200:
-            raise AIServiceError(f'GLM API 返回错误状态: HTTP {resp.status_code}')
+            raise AIServiceError(_build_http_error_message(resp))
 
         # 5) 响应 JSON 解析
         try:

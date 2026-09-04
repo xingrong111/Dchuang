@@ -129,6 +129,114 @@ class TestNormalizeResult:
             _normalize_result(['not', 'dict'])
 
 
+class TestBuildHttpErrorMessage:
+    """非 200 响应仅保留经过筛选、脱敏和限长的诊断字段。"""
+
+    @staticmethod
+    def _response(status_code, body=None, headers=None, invalid_json=False):
+        class Response:
+            def __init__(self):
+                self.status_code = status_code
+                self.headers = headers or {}
+
+            def json(self):
+                if invalid_json:
+                    raise ValueError('not json')
+                return body
+
+        return Response()
+
+    def test_nested_error_json_with_top_level_request_id(self):
+        from app.services.glm import _build_http_error_message
+
+        response = self._response(429, {
+            'error': {'code': '1302', 'message': 'rate limit'},
+            'request_id': 'req-123',
+        })
+        message = _build_http_error_message(response)
+
+        assert 'HTTP 429' in message
+        assert 'code=1302' in message
+        assert 'message=rate limit' in message
+        assert 'request_id=req-123' in message
+
+    def test_top_level_error_fields(self):
+        from app.services.glm import _build_http_error_message
+
+        response = self._response(429, {
+            'code': '1311',
+            'message': 'model not available',
+        })
+        message = _build_http_error_message(response)
+
+        assert 'code=1311' in message
+        assert 'message=model not available' in message
+        assert 'request_id=' not in message
+
+    def test_non_json_body_falls_back_to_http_status(self):
+        from app.services.glm import _build_http_error_message
+
+        response = self._response(500, invalid_json=True)
+
+        assert _build_http_error_message(response) == (
+            'GLM API 返回错误状态: HTTP 500'
+        )
+
+    def test_long_message_is_truncated(self):
+        from app.services.glm import _build_http_error_message
+
+        response = self._response(429, {'message': 'x' * 500})
+        message = _build_http_error_message(response)
+        detail = message.split('message=', 1)[1]
+
+        assert detail.endswith('...')
+        assert len(detail) == 303
+        assert 'x' * 301 not in detail
+
+    def test_sensitive_values_are_redacted(self):
+        from app.services.glm import _build_http_error_message
+
+        response = self._response(429, {
+            'message': (
+                'Authorization: Bearer abcdefg123 '
+                'api_key=key-value token=token-value password=pwd-value'
+            ),
+        })
+        message = _build_http_error_message(response)
+
+        assert '[REDACTED]' in message
+        assert 'abcdefg123' not in message
+        assert 'key-value' not in message
+        assert 'token-value' not in message
+        assert 'pwd-value' not in message
+
+    def test_nested_error_request_id(self):
+        from app.services.glm import _build_http_error_message
+
+        response = self._response(429, {
+            'error': {
+                'code': '1308',
+                'message': 'quota exceeded',
+                'request_id': 'nested-req-789',
+            },
+        })
+
+        message = _build_http_error_message(response)
+        assert 'request_id=nested-req-789' in message
+
+    def test_request_id_falls_back_to_response_header(self):
+        from app.services.glm import _build_http_error_message
+
+        response = self._response(
+            429,
+            {'error': {'code': '1305', 'message': 'busy'}},
+            headers={'X-Zhipu-Request-Id': 'header-req-456'},
+        )
+
+        message = _build_http_error_message(response)
+        assert 'request_id=header-req-456' in message
+
+
 class TestGLMServiceInit:
     """GLMService 初始化"""
 
