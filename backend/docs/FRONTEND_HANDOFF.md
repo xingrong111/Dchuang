@@ -1,9 +1,10 @@
 # 智绘锡承 - 前端交接文档（FRONTEND_HANDOFF）
 
-> 版本：v1.0（阶段16-D 后端交付收口）
+> 版本：v1.1（前后端联调交付，后端 `f47de53`）
 > 读者：前端 A 同学（`A_qianduan` 分支开发联调用）
 > 配套：详细字段与错误码见 `backend/docs/API_CONTRACT.md`（本文件为前端使用速查）。
-> 约束：以下接口均为后端**真实路由**，前端调用时统一加 `/api` 前缀。
+> 约束：以下接口均为后端**真实路由**，前端调用时统一加 `/api` 前缀。`B_houduan` 不包含 `frontend/`；前端现状基于只读核对的 `origin/A_qianduan@1f46e66`。
+> 后端接口总计：46 个 Method + Route 组合；精确字段以 `API_CONTRACT.md` 为准。
 
 ---
 
@@ -27,7 +28,7 @@ Authorization: Bearer <token>
 ### 1.3 上传接口的 Cookie Session 说明
 
 - 登录时后端**同时建立 Flask Session Cookie**（HttpOnly）。
-- `el-upload` 等原生 XHR 会自动携带 Cookie → **无需手动加 Authorization 头**即可调 `/api/workshop/upload`、`/api/user/upload-avatar`。
+- Vite 同源代理下，`el-upload` 可使用登录建立的 Session Cookie；若前后端跨域部署，必须显式启用 `with-credentials` 并配置允许凭据的 CORS。更稳妥的方案是为上传请求显式附加 Bearer Token。
 - axios 场景带 Bearer 头同样可用（双认证兼容，JWT 优先）。
 
 ### 1.4 通用响应格式
@@ -211,7 +212,64 @@ SUCCESS 后 task.artwork_id 已回填 → 用 GET /api/workshop/works/{artwork_i
 
 ---
 
-## 附：联调 Checklist
+## 9. 当前 A 分支接入现状（只读快照）
+
+> 核对来源：`origin/A_qianduan@1f46e66`。A 同学继续开发后，应在合并/联调前重新跑一遍清单。
+
+### 9.1 已接真实后端
+
+- `src/api/auth.js` + `store/userStore.js` 已调用登录、注册、当前用户接口，登录正确读取 `response.data.token`。
+- `src/api/index.js` 的 `baseURL` 默认 `/api`，Vite 代理正确剥离 `/api` 并转发 `localhost:8000`。
+- `src/api/workshop.js` 的 `saveWork`、`uploadFile` 路径与后端一致；当前实际使用的是 `AdvancedMultiModalInput` 图片上传。
+- Community 页面和 Profile 页面中的 `el-upload` action 使用了真实上传路径。
+
+### 9.2 仍为 Mock / 本地状态
+
+- `AIWorkshopCanvas.vue` 用定时器模拟进度，并随机创建 Three.js 几何体；未调用 AI API。
+- `AdvancedMultiModalInput.vue` 文本确认使用 `setTimeout` 模拟；图片只上传，未接 analyze-style 或 image-to-3D。
+- `CommunityView.vue` 的作品、点赞、评论、发布全部为本地数组修改，未导入 community API。
+- `ProfileView.vue` 的我的作品、收藏、订单、资料修改和密码修改均为本地 Mock。
+- `MultiModalInputView.vue` 仅显示旋转立方体，没有加载后端 GLB。
+- 当前 A 分支没有 Admin 页面或 Admin API 封装。
+
+### 9.3 错误或过时路径
+
+| 前端文件 | 当前路径/行为 | 正确后端能力 |
+|---|---|---|
+| `src/api/workshop.js` | `POST /workshop/generate` | `POST /api/ai/generate-3d` |
+| `src/api/workshop.js` | `GET /workshop/parts` | 后端无此接口；零件编辑保持纯前端或移除请求 |
+| `src/api/community.js` | `/community/works*` | `/api/workshop/works*` |
+| `src/api/community.js` | `POST /community/works` multipart | 先 `/api/workshop/upload`，再 JSON `POST /api/workshop/save` |
+| `src/api/auth.js` | `POST /auth/logout` | 后端无此接口；当前只做本地退出 |
+
+### 9.4 尚未使用的后端能力
+
+- AI generate/analyze、任务详情轮询、任务列表、历史、统计和失败任务重试。
+- Credits 余额与流水，以及 402 和失败退款后的刷新。
+- Community 详情、取消点赞、收藏/取消收藏、评论列表和删除评论。
+- 作品更新/删除、按作者与 AI 标记过滤。
+- 全部 Admin API、Provider 状态、CSV 导出和审计日志。
+- `/health` 与 `/health/ready`（通常由部署监控使用）。
+
+## 10. model_url 与 Three.js
+
+- `SUCCESS` 任务优先使用 `artwork_id` 查询作品详情，再读取 `data.model_url`；`result_url` 可用于任务态展示，但最终作品以 Artwork 为准。
+- 后端本地持久化 URL 形如 `/api/static/uploads/models/<uuid>.glb`，浏览器经 Vite 代理即可访问。
+- A 分支当前只创建内置几何体，没有导入 `GLTFLoader`。应使用 `three/examples/jsm/loaders/GLTFLoader.js` 加载 GLB，并处理 loading、404、解析失败、对象释放及相机适配。
+- 不要拼接后端文件系统路径；直接把 API 返回的 URL 交给 loader。若部署为不同域名，应通过统一 API base URL 解析。
+
+## 11. 认证与前端状态注意事项
+
+- `userStore.login()` 保存的对象含 token，当前 axios 拦截器可以正确注入 Bearer。
+- 当前 `fetchUserInfo()` 会用 `/auth/user` 返回值整体覆盖 `user`，但该响应不含 token，之后 Bearer 会丢失。必须保留原 token或把 token 独立存储。
+- `/auth/user` 本身要求 JWT；上传接口才支持 JWT/Session 双认证。
+- 401 时清除登录态并跳转登录；402 单独提示积分不足；503 展示 Provider 安全错误消息但不要自动重试付费操作。
+
+## 12. 联调执行入口
+
+逐步执行、验收状态表和失败记录模板见 [`INTEGRATION_CHECKLIST.md`](./INTEGRATION_CHECKLIST.md)。
+
+## 附：简版联调 Checklist
 
 1. 登录拿 `token` → 全局 axios 注入 Bearer。
 2. 上传用 el-upload（Cookie Session 免 token）确认 `/api/workshop/upload` 返回 `data.url`。

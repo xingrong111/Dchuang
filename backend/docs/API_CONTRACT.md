@@ -1,8 +1,9 @@
-# 智绘锡承 - 后端 API 契约文档（阶段16-D）
+# 智绘锡承 - 后端 API 契约文档
 
-> 版本：v1.0（阶段16-D 交付收口）
+> 版本：v1.1（前后端联调交付，后端 `f47de53`）
 > 适用范围：后端 `B_houduan` 分支全部真实接口，供前端 A 同学联调与运维部署参考。
 > 内容来源：`backend/app/api/v1/*.py` 当前代码，**无虚构接口**。
+> 当前共 **46 个 HTTP Method + Route 组合**（39 个去重 URL 规则）：Auth 3、User 1、AI 7、Workshop/Community 12、Upload 3、Admin 18、Health 2。
 
 ---
 
@@ -119,7 +120,7 @@
 }
 ```
 - 响应 200：`data = task`（`{id, provider, model, task_type, prompt, input_url, external_task_id, status, result_url, artwork_id, error_message, created_at, updated_at}`）
-- 积分：成功后按动态成本扣费（默认 20，可后台调 `cost_config`）；失败/异常自动退款
+- 积分：任务创建时按动态成本预扣（默认 20，可后台调 `cost_config`）；失败/异常自动退款，成功保留消费
 - 幂等：同用户同类型同输入存在 RUNNING 任务 → 直接返回已有任务
 - 错误：400（校验/非法类型/SSRF 拦截 input_url）；401；402（余额不足）；503（Provider 停用/AI 异常）
 
@@ -132,8 +133,9 @@
 ```
 - `artwork_id` 规则：不传 → 纯分析；传且属于本人 → 成功后回写 `style_analysis`；不存在 → 404；他人 → 403
 - 响应 200：`data = {task: {...}, style, features: [], report: {}}`
-- 积分：成功后扣 5（默认，可动态调）；失败自动退款
+- 积分：任务创建时预扣 5（默认，可动态调）；失败自动退款，成功保留消费
 - 错误：400；401；402；403（他人作品）；404（作品/任务不存在）；503（Provider 停用/AI 异常）
+- GLM 非 200 时，503 的 `message` 会在安全脱敏后尽量包含 `HTTP status / provider code / provider message / request_id`；字段缺失或非 JSON 时只保留可获得部分，不包含完整响应体、Key、Authorization 或图片 Base64。
 
 ### 3.3 GET /ai/tasks —— 我的任务列表
 
@@ -357,7 +359,7 @@
 - 权限：登录；body：`multipart/form-data` 字段 `file` → 存 avatars/ 并更新用户头像
 - 响应 200：`data = {url: "/api/static/uploads/avatars/xxx.png"}`
 
-### 6.3 GET /static/uploads/<path> —— 静态文件访问（公开）
+### 6.3 GET /static/uploads/<path:filename> —— 静态文件访问（公开）
 - 无认证；`send_from_directory` 防路径穿越
 
 ---
@@ -396,3 +398,25 @@
 - 任务/作品删除等采用软性语义或级联策略见具体接口；`artwork_id` 回填遵循"成功才建作品（方案 B）"。
 - 时间字段均为 ISO8601 字符串（UTC）。
 - 本契约与代码同步维护：若接口行为变更，请同步更新本文档。
+
+### 8.4 路由数量核对（f47de53）
+
+| 模块 | Method + Route 数 | 后端实际路径前缀 |
+|---|---:|---|
+| Auth | 3 | `/auth/*` |
+| User | 1 | `/user/*` |
+| AI | 7 | `/ai/*` |
+| Workshop / Community | 12 | `/workshop/*`、`/comments/*` |
+| Upload / Static | 3 | `/workshop/upload`、`/user/upload-avatar`、`/static/uploads/*` |
+| Admin | 18 | `/admin/*` |
+| Health | 2 | `/health*` |
+| **合计** | **46** | 前端调用时统一增加 `/api` |
+
+### 8.5 当前契约边界
+
+- 后端没有 `/auth/logout`：前端退出登录应清除本地 JWT/用户状态；Session 若需服务端销毁需后续另行定义接口。
+- 后端没有 `/workshop/generate`、`/workshop/parts` 或任何 `/community/*` 路由。
+- 后端没有用户资料编辑、密码修改、订单、商城、博物馆数据或“我的收藏列表”接口；这些页面不能把本地 Mock 当作已联调能力。
+- `POST /ai/tasks/<id>/retry` 前端当前只应面向失败的 3D 生成任务展示；风格分析失败应在用户确认后重新调用 `POST /ai/analyze-style`。
+- 作品列表后端当前只实现 `sort=latest`；其他 sort 值回退为 latest。搜索、分类、热门和评论数排序不属于当前接口能力。
+- 完整联调步骤与逐项验收见 `backend/docs/INTEGRATION_CHECKLIST.md`。
