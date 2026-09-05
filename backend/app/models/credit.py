@@ -1,5 +1,5 @@
 # ============================================================
-# 智绘锡承 - 平台积分账本模型（Credit Ledger，阶段15-B）
+# 智绘锡承 - 平台积分账本模型（Credit Ledger）
 # 位置: backend/app/models/credit.py
 #
 # 设计:
@@ -23,7 +23,7 @@ DEFAULT_REGISTER_CREDITS = 100
 
 
 class CreditAccount(db.Model):
-    """用户积分账户（阶段15-B）"""
+    """用户积分账户"""
     __tablename__ = 'credit_accounts'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -40,7 +40,7 @@ class CreditAccount(db.Model):
 
 
 class CreditTransaction(db.Model):
-    """积分流水（阶段15-B，只增不改）"""
+    """积分流水（只增不改）"""
     __tablename__ = 'credit_transactions'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

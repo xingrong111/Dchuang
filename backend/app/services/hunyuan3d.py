@@ -1,14 +1,14 @@
 # ============================================================
-# 智绘锡承 - 腾讯混元生3D SDK 封装服务层（阶段12-B1）
+# 智绘锡承 - 腾讯混元生3D SDK 封装服务层
 # 位置: backend/app/services/hunyuan3d.py
 #
 # 定位:
 #   - 本类是腾讯云 AI3D 产品（tencentcloud.ai3d.v20250513）的薄封装：
 #     统一读取配置、构造 Credential/Client、校验参数、构造提交/查询请求
-#   - 阶段12-B1 仅完成 SDK 封装（不实际消耗积分生成模型）：
-#     create_text_to_3d / create_image_to_3d / query_task 返回构造好的
-#     SDK Request 对象；真实网络提交（client.SubmitXxx/QueryXxx）在后续
-#     阶段接入（受控联调时启用），本阶段绝不调用腾讯 API
+#   - create_text_to_3d / create_image_to_3d 构造并提交生成请求
+#   - query_task 查询异步任务状态并归一化结果
+#   - 网络调用仅在对应公开方法被业务层调用时发生
+#   - 凭据缺失或调用失败时明确报错，不伪造成功
 #
 # 配置（backend/.env，严禁提交真实值）:
 #   TENCENT_SECRET_ID / TENCENT_SECRET_KEY  腾讯云 CAM API 密钥（成对）
@@ -42,7 +42,7 @@ from app.utils.files import read_upload_image_as_base64
 GENERATE_TYPE_DEFAULT = 'Normal'
 
 # 腾讯 AI3D 查询任务状态（QueryHunyuanTo3DProJob Response.Status）映射
-# 真实联调实测（12-B3-C）: Status 为【字符串】枚举，如 'DONE'（已完成）。
+# 真实联调确认：Status 为字符串枚举，如 'DONE'（已完成）。
 # 常见取值: DONE(成功) / FAILED(失败) / RUNNING / PENDING（进行中）
 # ⚠️ 若后续真实联调发现新取值，仅需补充本表（集中维护，勿散落硬编码）
 TENCENT_JOB_STATUS = {
@@ -110,13 +110,13 @@ def _strip_data_url_prefix(data_url):
 
 
 class Hunyuan3DService:
-    """腾讯混元生3D SDK 封装服务（阶段12-B1：仅封装，不实际消耗积分）
+    """腾讯混元生3D SDK 封装服务
 
-    真实调用链（后续阶段接入）:
+    真实调用链:
         service.create_text_to_3d(prompt)        # → SubmitXxxRequest
-        resp = service.client.SubmitHunyuanTo3DProJob(req)   # 后续阶段
+        resp = service.client.SubmitHunyuanTo3DProJob(req)
         service.query_task(job_id)               # → QueryXxxRequest
-        resp = service.client.QueryHunyuanTo3DProJob(req)    # 后续阶段
+        resp = service.client.QueryHunyuanTo3DProJob(req)
     """
 
     provider_name = 'hunyuan'
@@ -206,7 +206,7 @@ class Hunyuan3DService:
         return req
 
     def query_task(self, task_id):
-        """真实查询混元3D任务（阶段12-B3-B）
+        """真实查询混元3D任务
 
         调用链: task_id → client.QueryHunyuanTo3DProJob → 解析状态/错误/产物 URL。
         本方法只允许在受控联调/真实场景使用。
@@ -235,7 +235,7 @@ class Hunyuan3DService:
         return _parse_query_response(resp)
 
     def submit_job(self, request):
-        """真实提交混元生3D任务（阶段12-B3-A）
+        """真实提交混元生3D任务
 
         调用链: request → client.SubmitHunyuanTo3DProJob → 解析 JobId
         本方法只允许在受控联调/真实场景使用（消耗积分）。

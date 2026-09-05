@@ -46,7 +46,7 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # --- 关系（后续阶段补充 artwork/comment/order 模型后完善） ---
+    # --- 模型关系 ---
 
     def __init__(self, username, email, password):
         self.username = username

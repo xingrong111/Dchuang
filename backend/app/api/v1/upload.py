@@ -1,6 +1,6 @@
 # ============================================================
 # 智绘锡承 - 文件上传 API
-# 位置: backend/app/api/v1/upload.py（阶段5 文件上传服务）
+# 位置: backend/app/api/v1/upload.py
 #
 # 接口前缀约定: 前端 Vite 代理剥 /api 后转发，本蓝图路由无 /api 前缀:
 #   POST /workshop/upload      （前端 POST /api/workshop/upload）
@@ -11,13 +11,13 @@
 #   → 响应必须为 {"code":200,"message":...,"data":{"url":"..."}}
 #
 # 认证设计（重要）:
-# 1. /workshop/upload（阶段12-A: 修复匿名上传技术债务）:
+# 1. /workshop/upload:
 #    - 复用 get_authenticated_user() 双认证（JWT Bearer 优先 + Flask Session Cookie 兜底）
 #    - 无效/过期 JWT → 401（不降级 Session 绕过）；无 JWT 且无 Session → 401
 #    - 兼容性: 前端 el-upload 原生 XHR 自动携带登录后的 Session Cookie（HttpOnly），
 #      无需前端加 Authorization Header 即可安全上传；axios 场景带 Bearer 同样可用
 # 2. /user/upload-avatar:
-#    - 双认证兼容（阶段5.1）: JWT Bearer 优先 + Flask Session Cookie 兜底
+#    - 双认证兼容: JWT Bearer 优先 + Flask Session Cookie 兜底
 #    - 身份仅来自可信来源（JWT identity / session['user_id']），
 #      【禁止】接受客户端提交的 user_id/username 等不可信字段
 #    - 无效/过期 JWT → 401（不降级 Session 绕过）
@@ -61,10 +61,10 @@ def workshop_upload():
     请求: multipart/form-data，字段名 file（前端 workshop.js: formData.append('file', file)）
     响应: {"code": 200, "message": "上传成功", "data": {"url": "/api/static/uploads/..."}}
 
-    认证（阶段12-A: 修复匿名上传技术债务）:
+    认证：
     - get_authenticated_user() 双认证（JWT Bearer 优先 + Session Cookie 兜底）
     - 未认证（无有效 JWT 且无有效 Session）→ 401
-    - 上传后的图片归属/安全校验沿用既有逻辑，身份不写入存储（上传记录由后续阶段补充）
+    - 上传接口不保存独立上传记录；作品归属在保存作品时确定
     """
     user = get_authenticated_user()
     if user is None:

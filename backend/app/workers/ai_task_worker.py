@@ -1,5 +1,5 @@
 # ============================================================
-# 智绘锡承 - AI 任务后台 Worker（阶段15-C）
+# 智绘锡承 - AI 任务后台 Worker
 # 位置: backend/app/workers/ai_task_worker.py
 #
 # 职责: 扫描 AITask.status == RUNNING 的异步任务（腾讯混元 3D JobId），
@@ -43,12 +43,12 @@ class AITaskWorker:
 
         Returns:
             dict: {'processed', 'success', 'failed', 'running',
-                   'providers', 'cost'} 状态明细（16-C: 含 Provider 分布与耗时）
+                   'providers', 'cost'} 状态明细（含 Provider 分布与耗时）
         """
         from app.services.ai_task import process_running_tasks
 
         result = process_running_tasks()
-        # 16-C: Provider 分布 → 逗号连接（无任务时为空）
+        # Provider 分布以逗号连接（无任务时为空）
         provider_text = ','.join(
             f'{name}={count}' for name, count in
             sorted((result.get('providers') or {}).items())

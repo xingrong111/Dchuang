@@ -1,5 +1,5 @@
 # ============================================================
-# 智绘锡承 - 作品管理 API（阶段7 Artwork CRUD）
+# 智绘锡承 - 作品管理 API
 # 位置: backend/app/api/v1/artwork.py
 #
 # 接口前缀约定: 前端 Vite 代理剥 /api 后转发，本蓝图路由无 /api 前缀:
@@ -37,7 +37,7 @@ from app.utils.exceptions import (
 )
 from app.utils.response import APIResponse
 
-# 评论内容长度上限（阶段14-C）
+# 评论内容长度上限
 COMMENT_MAX_LENGTH = 1000
 
 # 创建/更新时允许客户端设置的业务字段（白名单，防字段污染）
@@ -151,7 +151,7 @@ def list_artworks():
     # 用户隔离: 公开列表只含 is_public=True（私有对非作者不可见）
     query = Artwork.query.filter_by(is_public=True)
 
-    # AI 作品过滤（阶段14-A）
+    # AI 作品过滤
     ai_flag = request.args.get('is_ai_generated')
     if ai_flag is not None:
         if str(ai_flag).strip().lower() == 'true':
@@ -171,7 +171,7 @@ def list_artworks():
 
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
-    # 阶段14-B/14-C: like_count / comment_count 真实批量统计（一次 GROUP BY，无 N+1）
+    # like_count / comment_count 真实批量统计（一次 GROUP BY，无 N+1）
     artwork_ids = [artwork.id for artwork in pagination.items]
     like_counts = {}
     comment_counts = {}
@@ -203,8 +203,8 @@ def list_artworks():
     for artwork in pagination.items:
         data = artwork.to_dict()
         data['like_count'] = like_counts.get(artwork.id, 0)       # 覆盖列为真实统计
-        data['comment_count'] = comment_counts.get(artwork.id, 0)  # 阶段14-C
-        data['collect_count'] = collect_counts.get(artwork.id, 0)  # 阶段14-D
+        data['comment_count'] = comment_counts.get(artwork.id, 0)  # 真实评论数
+        data['collect_count'] = collect_counts.get(artwork.id, 0)  # 真实收藏数
         items.append(data)
     return APIResponse.paginated(
         items=items,
@@ -220,9 +220,9 @@ def get_artwork(artwork_id):
     """作品详情
 
     规则: 公开作品允许访问；私有作品仅作者可见；不存在 → 404
-    响应 data 扩展（阶段14-A）:
+    响应 data 扩展：
       - 基础信息 + author + like_count/view_count（to_dict）
-      - comment_count: 评论数（Like/Comment 模型后续阶段接入，当前 0 预留）
+      - comment_count: 真实评论数
       - current_user_status: 当前用户交互状态预留（liked/collected/is_author）
     """
     artwork = _get_artwork_or_404(artwork_id)
@@ -238,13 +238,13 @@ def get_artwork(artwork_id):
     db.session.commit()
 
     data = artwork.to_dict(include_details=True)
-    # 阶段14-B: like_count 真实统计 + current_user_status.liked 真实查询
+    # like_count 真实统计 + current_user_status.liked 真实查询
     data['like_count'] = artwork.likes.count()
     liked = (
         user is not None
         and Like.query.filter_by(user_id=user.id, artwork_id=artwork.id).first() is not None
     )
-    # 阶段14-C: comment_count 真实统计；14-D: collect_count + collected 真实
+    # comment_count 真实统计； collect_count + collected 真实
     data['comment_count'] = artwork.comments.count()
     data['collect_count'] = artwork.collections.count()
     collected = (
@@ -252,8 +252,8 @@ def get_artwork(artwork_id):
         and Collection.query.filter_by(user_id=user.id, artwork_id=artwork.id).first() is not None
     )
     data['current_user_status'] = {
-        'liked': liked,            # 14-B: 真实点赞状态
-        'collected': collected,    # 14-D: 真实收藏状态
+        'liked': liked,            # 真实点赞状态
+        'collected': collected,    # 真实收藏状态
         'is_author': is_author,
     }
 
@@ -270,7 +270,7 @@ def _check_like_target(artwork):
 
 
 def _check_public_interaction_target(artwork, action='操作'):
-    """公开互动（点赞/评论）目标校验（阶段14-C 通用化）
+    """公开互动（点赞/评论）目标校验
 
     规则: 登录必需（None → 401）；私有作品不可互动——
       非作者 → 404（不泄露存在性）；作者 → 400（明确不可互动）
@@ -295,7 +295,7 @@ def _like_count(artwork):
 
 @api_bp.route('/workshop/works/<artwork_id>/like', methods=['POST'])
 def like_artwork(artwork_id):
-    """点赞作品（阶段14-B）
+    """点赞作品
 
     认证: 登录用户（JWT/Session）
     幂等: 已点赞再次点赞 → 直接成功（不重复计数）
@@ -319,7 +319,7 @@ def like_artwork(artwork_id):
 
 @api_bp.route('/workshop/works/<artwork_id>/like', methods=['DELETE'])
 def unlike_artwork(artwork_id):
-    """取消点赞（阶段14-B）
+    """取消点赞
 
     认证: 登录用户
     幂等: 未点赞时取消 → 直接成功（不报错）
@@ -348,7 +348,7 @@ def _collect_count(artwork):
 
 @api_bp.route('/workshop/works/<artwork_id>/collect', methods=['POST'])
 def collect_artwork(artwork_id):
-    """收藏作品（阶段14-D）
+    """收藏作品
 
     认证: 登录用户
     幂等: 已收藏再次收藏 → 直接成功（不重复计数）
@@ -372,7 +372,7 @@ def collect_artwork(artwork_id):
 
 @api_bp.route('/workshop/works/<artwork_id>/collect', methods=['DELETE'])
 def uncollect_artwork(artwork_id):
-    """取消收藏（阶段14-D）
+    """取消收藏
 
     认证: 登录用户
     幂等: 未收藏时取消 → 直接成功（不报错）
@@ -461,7 +461,7 @@ def delete_artwork(artwork_id):
 
 
 # ------------------------------------------------------------
-# 评论（阶段14-C）
+# 评论
 # ------------------------------------------------------------
 def _get_comment_or_404(comment_id):
     """按 ID 获取评论，不存在抛 404"""
@@ -473,7 +473,7 @@ def _get_comment_or_404(comment_id):
 
 @api_bp.route('/workshop/works/<artwork_id>/comments', methods=['POST'])
 def create_comment(artwork_id):
-    """发表评论（阶段14-C）
+    """发表评论
 
     认证: 登录用户
     规则: 私有作品不可评论（非作者 404/作者 400）；作品不存在 404
@@ -504,7 +504,7 @@ def create_comment(artwork_id):
 
 @api_bp.route('/workshop/works/<artwork_id>/comments', methods=['GET'])
 def list_comments(artwork_id):
-    """评论列表（阶段14-C）
+    """评论列表
 
     规则: 公开作品可查看；私有作品仅作者可查看（非作者 404 不泄露）
     分页: page / per_page（默认 10，最大 50），按创建时间倒序
@@ -538,7 +538,7 @@ def list_comments(artwork_id):
 
 @api_bp.route('/comments/<int:comment_id>', methods=['DELETE'])
 def delete_comment(comment_id):
-    """删除评论（阶段14-C，仅评论作者）
+    """删除评论（仅评论作者）
 
     认证: 登录用户
     权限: 非作者 → 403；评论不存在 → 404

@@ -1,7 +1,7 @@
 # ============================================================
-# 智绘锡承 - AI 多模态 API（阶段9 AI 基础设施 / 阶段10 安全完善 /
-#                         阶段11-C GLM 集成 + Artwork 分析结果持久化 /
-#                         阶段11-F AI 异常任务状态一致性）
+# 智绘锡承 - AI 多模态 API（安全、任务与 Artwork 集成 /
+#                          GLM 集成 + Artwork 分析结果持久化 /
+#                          AI 异常任务状态一致性）
 # 位置: backend/app/api/v1/ai.py
 #
 # 接口前缀约定: 前端 Vite 代理剥 /api 后转发，本蓝图路由无 /api 前缀:
@@ -16,14 +16,14 @@
 # Artwork 集成（方案 B）: 任务 SUCCESS 后才创建 Artwork 并回填 task.artwork_id；
 #                         失败不创建（不产生空壳作品）。
 #
-# 阶段11-C: analyze-style 支持可选 artwork_id ——
+# analyze-style 支持可选 artwork_id ——
 #   - 不传: 保持原行为（纯分析，不触碰 Artwork）
 #   - 传且作品属于当前用户: 分析成功后写入 artwork.style_analysis
 #   - 传但作品不存在 → 404；属于他人 → 403（禁止越权修改，fail-fast）
 #   - 注意: task.artwork_id 不回填（其语义是"方案B成功后创建的作品"，
 #     analyze-style 针对的是已存在作品，仅回写分析结果字段）
 #
-# 安全（阶段10 A1）: input_url 仅允许本项目上传服务产生的 URL（/api/static/uploads/...），
+# 安全: input_url 仅允许本项目上传服务产生的 URL（/api/static/uploads/...），
 #                   严格前缀 + 路径解析校验，防 SSRF（真实 Provider 主动访问 input_url 时）。
 # ============================================================
 from urllib.parse import urlparse
@@ -128,7 +128,7 @@ def _get_authenticated_user_or_401():
 
 
 def _fail_timed_out_tasks():
-    """阶段15-C: 批量超时清理（薄包装 → services.ai_task.fail_timeout_tasks）
+    """批量超时清理（薄包装 → services.ai_task.fail_timeout_tasks）
 
     对全部 RUNNING + JobId 且超时的任务置 FAILED（纯本地 DB，无外部调用）
     """
@@ -144,7 +144,7 @@ def _get_task_or_404(task_id, user):
 
 
 def _refund_ai(user_id, task_id, cost, label='AI 任务'):
-    """阶段15-B/15-D: AI 任务失败自动退款（幂等: 同 reference 的 REFUND 不重复）
+    """AI 任务失败自动退款（同 reference 的 REFUND 幂等）
 
     在任务 FAILED（业务失败或执行异常落 FAILED 后）调用，将已扣积分退回
     """
@@ -171,7 +171,7 @@ def _refund_style_analyze(user_id, task_id, cost):
 
 
 def _find_running_duplicate(user_id, task_type, prompt, input_url):
-    """阶段13-C1: 查找进行中的重复生成任务
+    """查找进行中的重复生成任务
 
     去重键: user_id + task_type + （text_to_3d: prompt | image_to_3d: input_url）
     仅匹配 RUNNING（进行中未终态）任务；SUCCESS/FAILED 终态不拦截（允许重新生成）。
@@ -194,7 +194,7 @@ def _find_running_duplicate(user_id, task_type, prompt, input_url):
 
 
 def _maybe_refresh_async_task(task):
-    """阶段15-C: 轮询刷新真实异步任务（薄包装 → services.ai_task.refresh_task）
+    """轮询刷新真实异步任务（薄包装 → services.ai_task.refresh_task）
 
     行为与重构前完全一致（超时保护/腾讯查询/SUCCESS 产物转存+Artwork/FAILED）；
     传入当前 Provider（保持 API 层 get_ai_service 语义与测试可注入性）
@@ -210,7 +210,7 @@ def _create_artwork_from_task(task):
 def _execute_generate_3d(task):
     """执行 3D 生成（提交 → 状态流转 → 成功后创建 Artwork）
 
-    阶段11-F 状态一致性: Provider 抛异常（如 AI_PROVIDER=glm 时
+    状态一致性：Provider 抛异常（如 AI_PROVIDER=glm 时
     GLMService.generate_3d 明确不支持 3D 抛 UnconfiguredProviderError）→
     与 analyze_style 一致落 FAILED 终态并 commit，避免任务永久停留 PENDING。
     """
@@ -232,7 +232,7 @@ def _execute_generate_3d(task):
         db.session.commit()
         return task
 
-    # 阶段12-B3-A: 异步任务已提交（真实混元3D）→ 回填外部 JobId，
+    # 异步任务已提交（真实混元3D）→ 回填外部 JobId，
     # 任务保持 RUNNING（等待后续轮询查询），不创建空壳 Artwork
     if result.get('status') == RUNNING:
         if result.get('external_task_id'):
@@ -256,12 +256,12 @@ def _execute_generate_3d(task):
 def _execute_analyze_style(task, artwork=None):
     """执行风格分析（提交 → 状态流转 → 成功后可选回填 Artwork 分析结果）
 
-    阶段11-C 持久化规则:
+    持久化规则：
     - 仅当分析成功（SUCCESS）且调用方传入 artwork 时，写入 artwork.style_analysis
     - 分析失败 / 抛异常 / 未传 artwork → 不修改 Artwork（纯分析，保持原行为）
     - artwork 的归属校验（本人）由路由在任务创建前完成（fail-fast）
 
-    阶段11-F 状态一致性:
+    状态一致性：
     - Provider 抛异常（AIServiceError 一族，如 HTTP 非 200 / 超时 / 网络异常 /
       JSON 解析失败 / 缺字段 / 空 content）→ 任务落 FAILED 终态并 commit，
       避免任务永久停留 PENDING/RUNNING（僵尸任务）
@@ -290,7 +290,7 @@ def _execute_analyze_style(task, artwork=None):
 
     transition_status(task, SUCCESS)
 
-    # 阶段11-C: 分析成功且绑定作品 → 持久化结构化分析结果
+    # 分析成功且绑定作品 → 持久化结构化分析结果
     if artwork is not None:
         artwork.style_analysis = result
 
@@ -321,7 +321,7 @@ def generate_3d():
     prompt = (data.get('prompt') or '').strip()
     input_url = (data.get('input_url') or '').strip()
     service = get_ai_service()
-    # 阶段13-B3: model 元数据 —— 客户端未指定时按 Provider 实际模型记录
+    # model 元数据 —— 客户端未指定时按 Provider 实际模型记录
     # （hunyuan → HUNYUAN_3D_MODEL 配置或 'hunyuan-3d'；mock 无 model 属性 → 'mock-3d'）
     model = (data.get('model') or '').strip() or getattr(service, 'model', None) or 'mock-3d'
 
@@ -331,7 +331,7 @@ def generate_3d():
         # 安全: input_url 必须为本项目上传路径（防 SSRF）
         input_url = _validate_input_url(input_url)
 
-    # 阶段13-C1: 重复生成保护 —— 同用户/同任务类型/同输入（prompt 或 input_url）
+    # 重复生成保护 —— 同用户/同任务类型/同输入（prompt 或 input_url）
     # 且存在 RUNNING（进行中，未终态）任务 → 直接返回已有任务，不重复提交
     # （防手抖/网络重试导致重复消耗积分；终态任务不拦截——用户可重新生成）
     duplicate = _find_running_duplicate(user.id, task_type, prompt, input_url)
@@ -342,7 +342,7 @@ def generate_3d():
             code=200,
         )
 
-    # 阶段15-B/16-C: 积分 —— 动态成本（AIProviderConfig.cost_config 优先）;
+    # 积分 —— 动态成本（AIProviderConfig.cost_config 优先）;
     # 创建任务前余额检查（不足 402，不建任务）
     cost = CreditService.get_ai_cost(service.provider_name, 'generate_3d')
     if CreditService.get_balance(user.id) < cost:
@@ -361,8 +361,8 @@ def generate_3d():
     db.session.add(task)
     db.session.flush()  # 获取 task.id（事务未提交）
 
-    # 阶段15-B/15-D: 扣费（幂等 reference=task.id；余额不足抛 402 → 事务回滚无任务残留）
-    # description 审计格式 '<TYPE>:<provider>'（15-D: 支持"哪个 AI 模型消耗最多积分"统计）
+    # 扣费（幂等 reference=task.id；余额不足抛 402 → 事务回滚无任务残留）
+    # description 审计格式 '<TYPE>:<provider>'，用于按模型统计积分消耗
     CreditService().consume(
         user.id, cost,
         transaction_type=CREDIT_TYPE_AI_GENERATE_3D,
@@ -375,7 +375,7 @@ def generate_3d():
     try:
         task = _execute_generate_3d(task)
     except Exception:
-        # 提交/执行异常（11-F 已落 FAILED）→ 自动退款，保持错误语义上抛
+        # 提交或执行异常已落 FAILED：自动退款并保持错误语义上抛
         _refund_generate_3d(user.id, task.id, cost)
         raise
     if task.status == FAILED:
@@ -391,7 +391,7 @@ def generate_3d():
 
 @api_bp.route('/ai/tasks', methods=['GET'])
 def list_tasks():
-    """AI 任务列表（阶段13-B3，仅本人，倒序分页）
+    """AI 任务列表（仅本人，倒序分页）
 
     认证: get_authenticated_user()
     查询参数: page（默认1）, per_page（默认10, 最大50）
@@ -401,7 +401,7 @@ def list_tasks():
     """
     user = _get_authenticated_user_or_401()
 
-    # 阶段13-B4: 列表路径触发批量超时清理（纯本地 DB；RUNNING 超时任务 → FAILED）
+    # 列表路径触发批量超时清理（纯本地 DB；RUNNING 超时任务 → FAILED）
     _fail_timed_out_tasks()
 
     page = request.args.get('page', 1, type=int)
@@ -425,7 +425,7 @@ def list_tasks():
 
 @api_bp.route('/ai/tasks/statistics', methods=['GET'])
 def task_statistics():
-    """AI 任务统计（阶段13-C1/15-D，仅本人）
+    """AI 任务统计（仅本人）
 
     认证: get_authenticated_user()
     说明: 统计当前用户全部 AI 任务状态分布；查询前先执行超时清理保证准确
@@ -449,7 +449,7 @@ def task_statistics():
     total = sum(counts.values())
     success = counts.get(SUCCESS, 0)
 
-    # 阶段15-D: 平均耗时（SUCCESS 任务 updated_at - created_at，秒）
+    # 平均耗时（SUCCESS 任务 updated_at - created_at，秒）
     average_duration = 0.0
     if success:
         success_rows = (
@@ -490,7 +490,7 @@ def get_task(task_id):
     """
     user = _get_authenticated_user_or_401()
     task = _get_task_or_404(task_id, user)
-    # 阶段12-B3-B: 真实异步任务（RUNNING + JobId）读取时触发一次轮询刷新
+    # 真实异步任务（RUNNING + JobId）读取时触发一次轮询刷新
     _maybe_refresh_async_task(task)
 
     return APIResponse.success(
@@ -502,7 +502,7 @@ def get_task(task_id):
 
 @api_bp.route('/ai/tasks/<task_id>/retry', methods=['POST'])
 def retry_task(task_id):
-    """失败任务重试（阶段15-A，仅本人）
+    """失败任务重试（仅本人）
 
     规则: 仅本人任务（他人/不存在 → 404 不泄露）；仅 FAILED 允许重试
     （SUCCESS/RUNNING/PENDING → 400）
@@ -541,7 +541,7 @@ def retry_task(task_id):
 
 @api_bp.route('/ai/history', methods=['GET'])
 def ai_history():
-    """AI 生成历史（阶段15-A，仅本人）
+    """AI 生成历史（仅本人）
 
     认证: get_authenticated_user()
     查询参数: page / per_page（默认10, 最大50）
@@ -595,7 +595,7 @@ def analyze_style():
     认证: get_authenticated_user()（JWT 优先 + Session 兜底）
     输入: {"input_url": "/api/static/uploads/images/xxx.png",
            "artwork_id": "可选，作品ID（复用 /workshop/save 返回的 data.id）"}
-    权限（阶段11-C）: 传 artwork_id 时 ——
+    权限：传 artwork_id 时 ——
       作品不存在 → 404（ResourceNotFoundError）
       作品属于他人 → 403（PermissionError_，禁止越权修改）
       作品属于本人 → 分析成功后写入 artwork.style_analysis
@@ -613,7 +613,7 @@ def analyze_style():
     # 安全: input_url 必须为本项目上传路径（防 SSRF）
     input_url = _validate_input_url(input_url)
 
-    # 阶段11-C: 可选 artwork_id —— 先校验归属（fail-fast，越权请求不产生任务记录）
+    # 可选 artwork_id —— 先校验归属（fail-fast，越权请求不产生任务记录）
     artwork_id = (data.get('artwork_id') or '').strip() or None
     artwork = None
     if artwork_id:
@@ -623,15 +623,15 @@ def analyze_style():
         if artwork.user_id != user.id:
             raise PermissionError_('没有权限修改该作品')
 
-    # 阶段16-C/15-D: Provider 选择（enabled 运行时治理，fail-fast 不建任务）
+    # Provider 选择（enabled 运行时治理，fail-fast 不建任务）
     service = get_ai_service()
-    # 阶段15-D/16-C: 积分 —— 动态成本 + 创建任务前余额检查（不足 402，不建任务）
+    # 积分 —— 动态成本 + 创建任务前余额检查（不足 402，不建任务）
     cost = CreditService.get_ai_cost(service.provider_name, 'analyze_style')
     if CreditService.get_balance(user.id) < cost:
         raise CreditInsufficientError(f'积分不足（AI 风格分析需 {cost} 积分）')
 
     # 创建分析任务（复用 AITask，状态管理与 generate_3d 一致）
-    # 阶段11-D: model 必须反映服务层实际调用模型 —— GLMService.model 即 GLM_MODEL 配置值，
+    # model 必须反映服务层实际调用模型 —— GLMService.model 即 GLM_MODEL 配置值，
     # 不硬编码 'glm-vision'（配置改变时元数据自动跟随）；Mock 无 model 属性 → 保持 'mock-vision'
     task = AITask(
         user_id=user.id,
@@ -644,7 +644,7 @@ def analyze_style():
     db.session.add(task)
     db.session.flush()  # 获取 task.id（事务未提交）
 
-    # 阶段15-D: 扣费（幂等 reference=task.id；不足抛 402 → 事务回滚无任务残留）
+    # 扣费（幂等 reference=task.id；不足抛 402 → 事务回滚无任务残留）
     # description 审计格式 '<TYPE>:<provider>'
     CreditService().consume(
         user.id, cost,

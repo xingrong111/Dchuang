@@ -1,7 +1,7 @@
 # ============================================================
 # 智绘锡承 - 数据模型导出
-# 规范 1.5: app/models/{user,artwork,part,order,comment,certificate}.py
-# 本阶段实现 User / UserProfile / Artwork / AITask / Like / Comment；其余模型后续阶段补充。
+# 当前集中导出后端全部领域模型。
+# 覆盖用户、作品、AI 任务、社区互动、积分和运营管理。
 # ============================================================
 from app.models.user import User, UserProfile
 from app.models.artwork import Artwork

@@ -1,5 +1,5 @@
 # ============================================================
-# 智绘锡承 - 作品收藏模型（阶段14-D）
+# 智绘锡承 - 作品收藏模型
 # 位置: backend/app/models/collection.py
 #
 # 设计（与 Like 平行）:
@@ -13,7 +13,7 @@ from app.extensions import db
 
 
 class Collection(db.Model):
-    """作品收藏（阶段14-D）"""
+    """作品收藏"""
     __tablename__ = 'artwork_collections'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

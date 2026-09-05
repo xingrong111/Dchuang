@@ -1,8 +1,8 @@
 # ============================================================
 # 智绘锡承 - 文件上传工具
-# 位置: backend/app/utils/files.py（阶段5 文件上传服务）
+# 位置: backend/app/utils/files.py
 #
-# 安全要求（依据《阶段5 文件上传服务开发前检查报告》第十二节）:
+# 安全要求（依据《文件上传服务开发前检查报告》第十二节）:
 # 1. secure_filename 清洗文件名，防路径穿越
 # 2. UUID 生成存储文件名，防覆盖/防猜测
 # 3. 扩展名白名单（ALLOWED_EXTENSIONS）
@@ -186,7 +186,7 @@ IMAGE_MIME_MAP = {
 def read_upload_image_as_base64(input_url):
     """安全读取上传图片并转换为 Base64 Data URL
 
-    用途: GLM 多模态接入（阶段11-A）——将本地上传图片转为
+    用途：将本地上传图片转换为 GLM 多模态请求所需的 Base64。
           data:image/<mime>;base64,<内容> 供 GLM image_url 使用。
 
     安全路径映射（不使用简单 replace 拼接）:
@@ -259,7 +259,7 @@ def read_upload_image_as_base64(input_url):
 
 
 # ------------------------------------------------------------
-# 远程模型产物转存（阶段13-B2: 解决腾讯 COS 预签名 URL 过期）
+# 远程模型产物转存：解决腾讯 COS 预签名 URL 过期
 # ------------------------------------------------------------
 # 允许下载的模型产物域名后缀（腾讯 COS 产物；防任意 URL 下载/SSRF）
 ALLOWED_DOWNLOAD_HOST_SUFFIXES = ('.tencentcos.cn', '.myqcloud.com')
@@ -272,7 +272,7 @@ MODEL_DOWNLOAD_TIMEOUT = (10, 60)
 def download_model_to_local(remote_url, subdir='models'):
     """下载远程 3D 模型产物并转存本地（解决第三方签名 URL 过期问题）
 
-    设计（阶段13-B2）:
+    设计：
     - 仅允许 https + 白名单域名后缀（腾讯 COS: *.tencentcos.cn / *.myqcloud.com），
       防任意 URL 下载/SSRF
     - 扩展名白名单（glb/gltf/obj/stl）→ 下载后魔数校验（validate_file_content）

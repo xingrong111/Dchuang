@@ -4,10 +4,10 @@
 #
 # 启动:
 #   cd backend
-#   python run.py            # 默认 development 配置，端口 8000
-#   python run.py production # 指定配置
+#   $env:FLASK_CONFIG = "development"
+#   python run.py            # 读取 FLASK_CONFIG，默认 development，端口 8000
 #
-# AI Worker（阶段15-C/15-D）: AI_WORKER_ENABLED=true 时以 daemon 线程启动
+# AI Worker: AI_WORKER_ENABLED=true 时以 daemon 线程启动
 # 后台任务调度；SIGTERM/SIGINT 触发优雅停止（当前轮完成后退出）；默认关闭
 # ============================================================
 import os
@@ -57,7 +57,7 @@ def _start_ai_worker(app):
 if __name__ == '__main__':
     port = int(os.getenv('PORT', '8000'))
 
-    # 阶段15-C/15-D: AI Worker（默认关闭，避免开发/测试/多实例误启动多个 Worker）
+    # AI Worker（默认关闭，避免开发/测试/多实例误启动多个 Worker）
     if app.config.get('AI_WORKER_ENABLED', False):
         _start_ai_worker(app)
 

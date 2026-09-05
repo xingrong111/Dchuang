@@ -1,5 +1,5 @@
 # ============================================================
-# 智绘锡承 - GLM 多模态 Provider（阶段11-B 真实接入）
+# 智绘锡承 - GLM 多模态 Provider
 # 位置: backend/app/services/glm.py
 #
 # 职责边界（Route 薄 / Service 厚）:

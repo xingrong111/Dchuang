@@ -1,5 +1,5 @@
 # ============================================================
-# 智绘锡承 - 作品评论模型（阶段14-C）
+# 智绘锡承 - 作品评论模型
 # 位置: backend/app/models/comment.py
 #
 # 设计:
@@ -13,7 +13,7 @@ from app.extensions import db
 
 
 class Comment(db.Model):
-    """作品评论（阶段14-C）"""
+    """作品评论"""
     __tablename__ = 'artwork_comments'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

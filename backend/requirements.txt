@@ -31,16 +31,16 @@ python-dotenv>=1.0.0,<2.0.0
 # --- 密码哈希（Werkzeug 随 Flask 安装，此处显式声明） ---
 Werkzeug>=3.0.0,<4.0.0
 
-# --- JWT 认证（阶段3，规范文档 4.1.2 flask_jwt_extended） ---
+# --- JWT 认证（Flask-JWT-Extended） ---
 Flask-JWT-Extended>=4.6.0,<5.0.0
 
-# --- HTTP 客户端（阶段11-A: GLM 多模态真实接入，requests 方案，不使用 zhipuai SDK） ---
+# --- HTTP 客户端（GLM 多模态使用 requests，不使用 zhipuai SDK） ---
 requests>=2.31.0,<3.0.0
 
-# --- 腾讯云 SDK（阶段12-B: 混元生3D AI3D 产品真实接入，TC3 签名由 SDK 内置） ---
+# --- 腾讯云 SDK（混元 AI3D，TC3 签名由 SDK 内置） ---
 tencentcloud-sdk-python>=3.1.166,<4.0.0
 
-# --- 后续阶段预留（本次不安装，仅注释备忘） ---
-# Redis 缓存（阶段3+）: redis>=5.0.0
-# 限流（规范文档 4.1.2 RATELIMIT）: Flask-Limiter>=3.5.0
+# --- 可选基础设施（当前未安装） ---
+# Redis 缓存: redis>=5.0.0
+# API 限流: Flask-Limiter>=3.5.0
 # 测试（规范文档 第五章）: pytest>=8.0.0

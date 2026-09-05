@@ -99,7 +99,7 @@ def register():
         db.session.rollback()
         raise ValidationError('注册失败，请稍后重试')
 
-    # 阶段15-B: 注册自动初始化积分账户（默认赠送 100，幂等）
+    # 注册自动初始化积分账户（默认赠送 100，幂等）
     try:
         CreditService.init_account(user.id)
     except Exception:
@@ -144,7 +144,7 @@ def login():
     # 生成 JWT Access Token（identity 使用用户 id）
     access_token = create_access_token(identity=str(user.id))
 
-    # 建立安全 Flask Session（阶段5.1: 兼容 el-upload 自动携带 Cookie 的场景）
+    # 建立安全 Flask Session，兼容 el-upload 自动携带 Cookie 的场景
     # 身份来源为服务端验证后的 user.id（可信），与 JWT identity 一致
     session.clear()
     session['user_id'] = user.id

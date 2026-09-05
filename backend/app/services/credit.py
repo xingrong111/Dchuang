@@ -1,5 +1,5 @@
 # ============================================================
-# 智绘锡承 - 平台积分 Service（阶段15-B）
+# 智绘锡承 - 平台积分 Service
 # 位置: backend/app/services/credit.py
 #
 # 职责:
@@ -24,10 +24,10 @@ from app.utils.exceptions import CreditInsufficientError
 
 
 class CreditService:
-    """平台积分服务（阶段15-B/16-C）"""
+    """平台积分服务"""
 
     # ------------------------------------------------------------
-    # 动态 AI 成本（阶段16-C）
+    # 动态 AI 成本
     # ------------------------------------------------------------
     @staticmethod
     def get_ai_cost(provider, task_type):
@@ -45,7 +45,7 @@ class CreditService:
             2. config.py AI_COST_3D_GENERATE / AI_COST_STYLE_ANALYZE（默认 20/5）
         """
         # 1) DB 运营配置（后台可调，新任务即时生效）
-        #    兼容性: ai_providers 表不存在（旧库未跑 16-B migration）/查询异常
+        #    兼容性：ai_providers 表不存在或查询异常时回退默认成本
         #    → 回退默认成本，不阻断调用（与 factory enabled 治理口径一致）
         try:
             config = AIProviderConfig.query.filter_by(name=provider).first()

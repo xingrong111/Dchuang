@@ -1,5 +1,5 @@
 # ============================================================
-# 智绘锡承 - 管理员操作日志（阶段16-A）
+# 智绘锡承 - 管理员操作日志
 # 位置: backend/app/models/admin_log.py
 #
 # 用途: 审计后台管理操作（任务强制重试/后续运营动作），可追踪
@@ -11,7 +11,7 @@ from app.extensions import db
 
 
 class AdminLog(db.Model):
-    """管理员操作日志（阶段16-A）"""
+    """管理员操作日志"""
     __tablename__ = 'admin_logs'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

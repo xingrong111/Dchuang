@@ -1,8 +1,8 @@
 # ============================================================
-# 智绘锡承 - 后台运营管理 API（阶段16-A）
+# 智绘锡承 - 后台运营管理 API
 # 位置: backend/app/api/v1/admin.py
 #
-# 权限方案（阶段16-A）: 配置式 ADMIN_USER_IDS（逗号分隔用户 ID），
+# 权限方案: 配置式 ADMIN_USER_IDS（逗号分隔用户 ID），
 # 不新增 User 角色字段（避免 schema 变更）。流程: 登录 → 校验用户 ID
 # 在 ADMIN_USER_IDS 内 → 允许；未登录 401；普通用户 403。
 #
@@ -11,13 +11,13 @@
 #   GET  /admin/statistics/ai       AI 任务统计（只查 DB，不查腾讯；时间范围）
 #   GET  /admin/statistics/credits  积分统计
 #   GET  /admin/statistics/models   AI 模型成本分析（description 审计）
-#   GET  /admin/statistics/models/ranking  模型成本排行（16-C, total_cost DESC）
+#   GET  /admin/statistics/models/ranking  模型成本排行（total_cost DESC）
 #   GET  /admin/tasks               任务分页列表（status/provider 过滤）
 #   GET  /admin/tasks/<id>          任务详情（task+user+credit+artwork）
 #   POST /admin/tasks/<id>/retry    管理员强制重试（任意用户 FAILED/RUNNING）
-#   GET  /admin/providers/<id>/usage    Provider 用量统计（16-C）
-#   POST /admin/providers/<id>/toggle   Provider 启停开关（16-C）
-#   GET  /admin/providers/status        Provider 运行状态（16-D，模型健康面板）
+#   GET  /admin/providers/<id>/usage    Provider 用量统计
+#   POST /admin/providers/<id>/toggle   Provider 启停开关
+#   GET  /admin/providers/status        Provider 运行状态（模型健康面板）
 #
 # 审计: 管理操作写 AdminLog
 # ============================================================
@@ -113,7 +113,7 @@ def _paginate_args():
 # ------------------------------------------------------------
 @api_bp.route('/admin/statistics/users', methods=['GET'])
 def admin_statistics_users():
-    """用户统计（阶段16-A，管理员）"""
+    """用户统计（管理员）"""
     _admin_user_or_error()
 
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -130,7 +130,7 @@ def admin_statistics_users():
 # ------------------------------------------------------------
 @api_bp.route('/admin/statistics/ai', methods=['GET'])
 def admin_statistics_ai():
-    """AI 任务运营统计（阶段16-A，管理员；只查数据库）
+    """AI 任务运营统计（管理员；只查数据库）
 
     参数: start_date / end_date（YYYY-MM-DD，可选）
     返回: {total_tasks, success, failed, running, success_rate,
@@ -190,7 +190,7 @@ def admin_statistics_ai():
 # ------------------------------------------------------------
 @api_bp.route('/admin/statistics/credits', methods=['GET'])
 def admin_statistics_credits():
-    """积分运营统计（阶段16-A/16-B，管理员）
+    """积分运营统计（管理员）
 
     返回: {total_consumed, total_recharged, today_consumed,
            top_users: [{user_id, username, consumed}],
@@ -229,7 +229,7 @@ def admin_statistics_credits():
     top_users = [{'user_id': uid, 'username': name, 'consumed': int(c)}
                  for uid, name, c in rows]
 
-    # 阶段16-B: 近 7 天消费趋势（含 0 桶，Python 聚合保证 SQLite/MySQL 一致）
+    # 近 7 天消费趋势（含 0 桶，Python 聚合保证 SQLite/MySQL 一致）
     seven_days_start = today_start - timedelta(days=6)
     daily_map = {i: 0 for i in range(7)}
     consume_rows = (
@@ -249,7 +249,7 @@ def admin_statistics_credits():
         for idx in range(7)
     ]
 
-    # 阶段16-B: by_type（带符号合计：消费负、退款/充值正）
+    # by_type（带符号合计：消费负、退款/充值正）
     type_rows = (
         db.session.query(CreditTransaction.type, db.func.sum(CreditTransaction.amount))
         .group_by(CreditTransaction.type)
@@ -272,7 +272,7 @@ def admin_statistics_credits():
 # AI 模型成本分析
 # ------------------------------------------------------------
 def _model_cost_aggregate(start_dt, end_dt):
-    """消费记录成本聚合（阶段16-C 抽公共: models 明细 / ranking 排行共用）
+    """消费记录成本聚合（models 明细与 ranking 排行共用）
 
     数据源: CreditTransaction（消费记录 amount<0），description 审计格式
     '<TYPE>:<provider>'（如 AI_GENERATE_3D:hunyuan / AI_ANALYZE_STYLE:glm）
@@ -302,7 +302,7 @@ def _model_cost_aggregate(start_dt, end_dt):
 
 @api_bp.route('/admin/statistics/models', methods=['GET'])
 def admin_statistics_models():
-    """AI 模型成本分析（阶段16-A，管理员）
+    """AI 模型成本分析（管理员）
 
     数据源: CreditTransaction（消费记录 amount<0），description 审计格式
     '<TYPE>:<provider>'（如 AI_GENERATE_3D:hunyuan / AI_ANALYZE_STYLE:glm）
@@ -324,7 +324,7 @@ def admin_statistics_models():
 
 @api_bp.route('/admin/statistics/models/ranking', methods=['GET'])
 def admin_statistics_models_ranking():
-    """AI 模型成本排行（阶段16-C，管理员）
+    """AI 模型成本排行（管理员）
 
     数据源同 /admin/statistics/models（积分消费审计 description），
     按 provider 汇总后按 total_cost 降序排名（附 rank 序号与分类型成本）。
@@ -377,7 +377,7 @@ def _admin_task_base_query():
 
 @api_bp.route('/admin/tasks', methods=['GET'])
 def admin_list_tasks():
-    """后台任务列表（阶段16-A，管理员）
+    """后台任务列表（管理员）
 
     参数: status / provider / page / per_page
     """
@@ -402,7 +402,7 @@ def admin_list_tasks():
 
 @api_bp.route('/admin/tasks/<task_id>', methods=['GET'])
 def admin_get_task(task_id):
-    """后台任务详情（阶段16-A，管理员）
+    """后台任务详情（管理员）
 
     返回聚合: task + user + credit 流水（该任务 reference）+ artwork
     """
@@ -433,7 +433,7 @@ def admin_get_task(task_id):
 
 @api_bp.route('/admin/tasks/<task_id>/retry', methods=['POST'])
 def admin_retry_task(task_id):
-    """管理员强制重试任务（阶段16-A）
+    """管理员强制重试任务
 
     区别普通 retry（仅本人 + 仅 FAILED）: 管理员可对任意用户 FAILED/RUNNING
     任务强制重试；保留旧任务（不删除）并记录 AdminLog 审计；新建任务重新执行。
@@ -476,7 +476,7 @@ def admin_retry_task(task_id):
 
 
 # ------------------------------------------------------------
-# 阶段16-B: AI 趋势分析
+# AI 趋势分析
 # ------------------------------------------------------------
 def _bucket_key(dt, group_by):
     """日期分桶键: day=%Y-%m-%d / week=ISO %G-W%V / month=%Y-%m"""
@@ -489,7 +489,7 @@ def _bucket_key(dt, group_by):
 
 @api_bp.route('/admin/statistics/trend', methods=['GET'])
 def admin_statistics_trend():
-    """AI 趋势分析（阶段16-B，管理员；只查数据库，不查第三方）
+    """AI 趋势分析（管理员；只查数据库，不查第三方）
 
     参数: start_date / end_date（YYYY-MM-DD，可选）/ group_by（day|week|month，默认 day）
     返回: {trend: [{date, total, success, failed, credits}]}（按日期升序；
@@ -541,11 +541,11 @@ def admin_statistics_trend():
 
 
 # ------------------------------------------------------------
-# 阶段16-B: AI Provider 运营管理
+# AI Provider 运营管理
 # ------------------------------------------------------------
 @api_bp.route('/admin/providers', methods=['GET'])
 def admin_list_providers():
-    """Provider 配置列表（阶段16-B，管理员）"""
+    """Provider 配置列表（管理员）"""
     _admin_user_or_error()
     items = [p.to_dict() for p in AIProviderConfig.query.order_by(AIProviderConfig.id).all()]
     return APIResponse.success(data={'providers': items},
@@ -554,7 +554,7 @@ def admin_list_providers():
 
 @api_bp.route('/admin/providers', methods=['POST'])
 def admin_create_provider():
-    """创建 Provider 配置（阶段16-B，管理员）
+    """创建 Provider 配置（管理员）
 
     body: {"name": "hunyuan", "type": "3d"}（type: 3d | analysis；cost_config 可选）
     """
@@ -591,9 +591,9 @@ def admin_create_provider():
 
 @api_bp.route('/admin/providers/<int:provider_id>', methods=['PUT'])
 def admin_update_provider(provider_id):
-    """更新 Provider 配置（阶段16-B，管理员；支持 enabled/cost_config/type）
+    """更新 Provider 配置（管理员；支持 enabled/cost_config/type）
 
-    作用: enabled=false 关闭某模型调用（未来 factory 接入运行时校验）
+    作用: enabled=false 时，factory 在运行时阻止该 Provider 的新调用
     """
     admin = _admin_user_or_error()
     provider = db.session.get(AIProviderConfig, provider_id)
@@ -626,7 +626,7 @@ def admin_update_provider(provider_id):
 
 @api_bp.route('/admin/providers/<int:provider_id>', methods=['DELETE'])
 def admin_delete_provider(provider_id):
-    """删除 Provider 配置（阶段16-B，管理员）
+    """删除 Provider 配置（管理员）
 
     限制: 存在任务记录（AITask.provider == name）时禁止删除 → 400
     """
@@ -646,11 +646,11 @@ def admin_delete_provider(provider_id):
 
 
 # ------------------------------------------------------------
-# 阶段16-C: Provider 用量统计 / 启停开关
+# Provider 用量统计 / 启停开关
 # ------------------------------------------------------------
 @api_bp.route('/admin/providers/<int:provider_id>/usage', methods=['GET'])
 def admin_provider_usage(provider_id):
-    """Provider 用量统计（阶段16-C，管理员）
+    """Provider 用量统计（管理员）
 
     聚合该 Provider 的任务（AITask.provider）与积分消费（description 审计
     '<TYPE>:<provider>'）:
@@ -716,7 +716,7 @@ def admin_provider_usage(provider_id):
 
 @api_bp.route('/admin/providers/<int:provider_id>/toggle', methods=['POST'])
 def admin_toggle_provider(provider_id):
-    """Provider 启停开关（阶段16-C，管理员）
+    """Provider 启停开关（管理员）
 
     body 可选: {"enabled": true|false}；缺省则翻转当前值。
     说明: 与 PUT /admin/providers/<id> 区别 —— toggle 专为快速启停设计，
@@ -746,11 +746,11 @@ def admin_toggle_provider(provider_id):
 
 
 # ------------------------------------------------------------
-# 阶段16-D: Provider 运行状态（后台模型健康面板）
+# Provider 运行状态（后台模型健康面板）
 # ------------------------------------------------------------
 @api_bp.route('/admin/providers/status', methods=['GET'])
 def admin_provider_status():
-    """AI Provider 运行状态（阶段16-D，管理员；后台模型健康面板）
+    """AI Provider 运行状态（管理员；后台模型健康面板）
 
     返回: {providers: [{provider, enabled, running_tasks, last_used_at}]}
       provider:      名称（AIProviderConfig ∪ AITask.provider，按名升序）
@@ -805,11 +805,11 @@ def admin_provider_status():
 
 
 # ------------------------------------------------------------
-# 阶段16-B: 审计日志查询
+# 审计日志查询
 # ------------------------------------------------------------
 @api_bp.route('/admin/logs', methods=['GET'])
 def admin_list_logs():
-    """管理员操作日志查询（阶段16-B，管理员）
+    """管理员操作日志查询（管理员）
 
     参数: action / target_type / admin_user_id / page / per_page
     """
@@ -838,7 +838,7 @@ def admin_list_logs():
 
 
 # ------------------------------------------------------------
-# 阶段16-B: 任务 CSV 导出（流式）
+# 任务 CSV 导出（流式）
 # ------------------------------------------------------------
 def _iter_task_rows(filters, header=True):
     """分页流式产出 CSV 行（不一次加载全部；cost 按页批量查询）"""
@@ -900,7 +900,7 @@ def _iter_task_rows(filters, header=True):
 
 @api_bp.route('/admin/tasks/export', methods=['GET'])
 def admin_export_tasks():
-    """任务 CSV 导出（阶段16-B，管理员；流式输出，不一次加载全部）
+    """任务 CSV 导出（管理员；流式输出，不一次加载全部）
 
     参数: status / provider
     字段: task_id,user,provider,model,status,cost,created_at,artwork_id

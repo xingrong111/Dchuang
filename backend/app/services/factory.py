@@ -1,15 +1,15 @@
 # ============================================================
 # 智绘锡承 - AI Service 工厂
-# 位置: backend/app/services/factory.py（阶段9 AI 基础设施 / 阶段16-C 运行治理）
+# 位置: backend/app/services/factory.py
 #
 # 规则（严格）:
 #   1. AI_PROVIDER=mock      → MockProvider（显式启用）
-#   2. AI_PROVIDER=hunyuan   → HunyuanService 真实 3D Provider（阶段12-B2；
+#   2. AI_PROVIDER=hunyuan   → HunyuanService 真实 3D Provider
 #                              凭据缺失 → 明确错误）
-#   3. AI_PROVIDER=glm       → GLMService 真实实现（阶段11-B；Key 缺失 → 明确错误）
+#   3. AI_PROVIDER=glm       → GLMService 真实实现（Key 缺失 → 明确错误）
 #   4. AI_PROVIDER 未配置    → 开发环境默认 mock，但必须明确记录 provider=mock
 #
-# 阶段16-C 运行治理:
+# 运行治理:
 #   - get_ai_service(provider=None): 支持显式指定 provider（内部/管理调用）
 #   - enabled 校验: 若 AIProviderConfig 中存在该 name 且 enabled=False →
 #     AIServiceError('该 AI 模型已停用')；记录不存在 → 保持兼容（历史 provider
@@ -31,10 +31,10 @@ from app.utils.exceptions import AIServiceError
 
 
 def _check_provider_enabled(name):
-    """阶段16-C: 运行时 enabled 治理（DB 配置优先；无记录保持兼容）
+    """运行时 enabled 治理（DB 配置优先；无记录保持兼容）
 
     AIProviderConfig 存在且 enabled=False → 禁止调用
-    兼容性: 表不存在（旧库未跑 16-B migration）或查询异常 → 视同无记录，
+    兼容性: ai_providers 表不存在或查询异常时视同无配置记录，
     不阻断历史调用（与"记录不存在不拦截"一致）。
     """
     try:
@@ -47,7 +47,7 @@ def _check_provider_enabled(name):
 
 
 def get_ai_service(provider=None):
-    """根据配置/参数选择 Provider（阶段16-C 支持显式 provider）
+    """根据配置或参数选择 Provider（支持显式 provider）
 
     Args:
         provider: 可选，显式指定 provider 名（内部调用/管理重试）；None → AI_PROVIDER 配置
@@ -61,7 +61,7 @@ def get_ai_service(provider=None):
     """
     selected = (provider or current_app.config.get('AI_PROVIDER') or 'mock').strip().lower()
 
-    # 阶段16-C: 停用治理（配置记录存在即生效；不存在不拦截历史 provider）
+    # 停用治理（配置记录存在即生效；不存在不拦截历史 provider）
     _check_provider_enabled(selected)
 
     if selected == 'mock':
@@ -69,7 +69,7 @@ def get_ai_service(provider=None):
         return MockProvider()
 
     if selected == 'hunyuan':
-        # 真实 Provider（阶段12-B2）: SecretId/SecretKey 缺失 → 明确错误，不自动 Mock
+        # 真实 Provider: SecretId/SecretKey 缺失 → 明确错误，不自动 Mock
         secret_id = current_app.config.get('TENCENT_SECRET_ID')
         secret_key = current_app.config.get('TENCENT_SECRET_KEY')
         if not secret_id or not secret_key:
@@ -79,7 +79,7 @@ def get_ai_service(provider=None):
         return HunyuanService()
 
     if selected == 'glm':
-        # 真实 Provider（阶段11-B）: Key 缺失 → 明确错误，不自动 Mock
+        # 真实 Provider: Key 缺失 → 明确错误，不自动 Mock
         api_key = current_app.config.get('GLM_API_KEY')
         if not api_key:
             raise UnconfiguredProviderError(

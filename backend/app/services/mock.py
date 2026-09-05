@@ -1,6 +1,6 @@
 # ============================================================
 # 智绘锡承 - Mock AI Provider
-# 位置: backend/app/services/mock.py（阶段9 基础设施 / 阶段10 A4 改进）
+# 位置: backend/app/services/mock.py
 #
 # MockProvider 用途:
 #   - 单元测试（可控成功/失败）
@@ -11,7 +11,7 @@
 #   - 成功时提供模拟 external_task_id 与 result_url
 #   - 返回结构化结果（3D 生成 / 风格分析），但【不伪装成真实 AI Provider 响应】
 #
-# 阶段10 A4 改进（安全）:
+# 安全改进:
 #   - 【移除】通过 prompt 含 "FAIL" 触发失败的机制（正常用户输入 "should not fail"
 #     会被误判失败，且属于"prompt 内容劫持"式后门）
 #   - 【改为】实例属性 mock_behavior 控制: 'success'（默认）| 'fail'

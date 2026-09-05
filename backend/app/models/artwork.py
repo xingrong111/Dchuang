@@ -1,12 +1,12 @@
 # ============================================================
 # 智绘锡承 - 作品数据模型
-# 位置: backend/app/models/artwork.py（阶段7 Artwork 作品管理）
+# 位置: backend/app/models/artwork.py
 #
 # 字段定义依据: 《项目开发规范文档 v1.0》4.2.2 数据模型规范（Artwork）
 # 设计定位: Artwork 是 Workshop 保存作品 / Community 社区作品 /
 #           Profile 我的作品 / AI 文生3D / 风格分析 / 区块链存证 的公共数据基础。
 #
-# 本阶段仅实现 Artwork 核心模型（Like/Comment 后续阶段补充）。
+# Artwork 与点赞、评论、收藏及 AI 任务共同构成作品领域模型。
 # ============================================================
 import uuid
 from datetime import datetime
@@ -38,13 +38,13 @@ class Artwork(db.Model):
     model_size = db.Column(db.Integer)  # 文件大小（字节）
     thumbnail = db.Column(db.String(500))  # 缩略图URL
 
-    # --- AI 生成信息（预留，AI 阶段使用） ---
+    # --- AI 生成信息 ---
     is_ai_generated = db.Column(db.Boolean, default=False)
     ai_model = db.Column(db.String(50))
     ai_prompt = db.Column(db.Text)
     ai_params = db.Column(db.JSON)  # AI生成参数
 
-    # --- 风格分析（预留，AI 阶段使用） ---
+    # --- 风格分析 ---
     style_analysis = db.Column(db.JSON)  # 风格分析结果
 
     # --- 区块链存证（预留，存证阶段使用） ---

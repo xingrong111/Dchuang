@@ -1,6 +1,6 @@
 # ============================================================
 # 智绘锡承 - AI Provider 基础服务
-# 位置: backend/app/services/base.py（阶段9 AI 基础设施）
+# 位置: backend/app/services/base.py
 #
 # 职责边界:
 #   - Route (api/v1/ai.py): 参数校验、认证、组装 APIResponse
@@ -12,9 +12,9 @@
 #   - 不直接返回 HTTP Response（返回结构化 dict 或更新任务对象）
 #   - 具体 Provider 实现细节与 API 层完全分离
 #
-# 真实 Provider（hunyuan/glm）本阶段仅空骨架:
-#   - 明确抛出 NotImplemented / 配置错误
-#   - 不伪造真实 API 调用，不实现签名
+# 抽象基类只定义统一接口，具体 Provider 负责实现：
+#   - mock 用于本地测试和演示
+#   - glm 与 hunyuan 分别对接真实第三方能力
 # ============================================================
 from app.utils.exceptions import AIServiceError
 

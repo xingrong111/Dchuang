@@ -1,5 +1,5 @@
 # ============================================================
-# 智绘锡承 - 作品点赞模型（阶段14-B）
+# 智绘锡承 - 作品点赞模型
 # 位置: backend/app/models/like.py
 #
 # 设计:
@@ -14,7 +14,7 @@ from app.extensions import db
 
 
 class Like(db.Model):
-    """作品点赞（阶段14-B）"""
+    """作品点赞"""
     __tablename__ = 'artwork_likes'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

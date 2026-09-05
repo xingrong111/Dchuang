@@ -1,12 +1,12 @@
 # ============================================================
 # 智绘锡承 - AI 任务数据模型
-# 位置: backend/app/models/ai_task.py（阶段9 AI 基础设施）
+# 位置: backend/app/models/ai_task.py
 #
 # 设计依据: 《AI 多模态模块架构设计报告》AITask 模型设计
 # 定位: AITask 记录一次 AI 生成/分析任务的完整生命周期，
 #       成功后关联 Artwork（方案 B: 成功后创建作品并回填 artwork_id）。
 #
-# 本阶段仅实现基础设施（Mock Provider），不调用真实收费 API。
+# 支持 Mock、GLM 和腾讯混元 Provider；真实调用由运行配置显式选择。
 # ============================================================
 import uuid
 from datetime import datetime
@@ -28,7 +28,7 @@ class AITask(db.Model):
     # 归属用户（必填）
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     # 关联作品（可空：任务成功前无作品，成功后回填）
-    # 阶段10 A2: ON DELETE SET NULL —— Artwork 删除后任务保留，artwork_id 置 NULL（保留 AI 任务历史）
+    # ON DELETE SET NULL：Artwork 删除后任务保留，artwork_id 置 NULL
     artwork_id = db.Column(
         db.String(64),
         db.ForeignKey('artworks.id', ondelete='SET NULL'),

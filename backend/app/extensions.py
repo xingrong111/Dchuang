@@ -20,7 +20,7 @@ migrate = Migrate()
 # --- 跨域（规范 4.1.1: flask_cors） ---
 cors = CORS()
 
-# --- JWT 认证（阶段3，规范 4.1.2: flask_jwt_extended） ---
+# --- JWT 认证（Flask-JWT-Extended） ---
 jwt = JWTManager()
 
 

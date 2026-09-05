@@ -1,5 +1,5 @@
 # ============================================================
-# 智绘锡承 - AI 任务状态 Service（阶段15-C: 后台调度重构）
+# 智绘锡承 - AI 任务状态 Service
 # 位置: backend/app/services/ai_task.py
 #
 # 职责（从 api/v1/ai.py 抽取的公共逻辑，供 API 与后台 Worker 共用）:
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 def _log_task_done(task):
-    """阶段16-D: AI 任务完成结构化日志（AI_TASK_DONE）
+    """记录 AI 任务完成结构化日志（AI_TASK_DONE）
 
     任务进入终态（SUCCESS/FAILED）时记录:
       AI_TASK_DONE task_id=<id> provider=<p> status=<s> duration=<秒>
@@ -96,7 +96,7 @@ def refresh_task(task, service=None):
             task.error_message = f'AI 任务执行超时（超过 {timeout_seconds} 秒未完成）'
             transition_status(task, FAILED)
             db.session.commit()
-            _log_task_done(task)  # 16-D: 超时落终态也记录
+            _log_task_done(task)  # 超时落终态也记录
             return task
 
     provider = service or get_ai_service()
@@ -115,7 +115,7 @@ def refresh_task(task, service=None):
         task.error_message = f'AI任务状态查询异常: {e}'
         transition_status(task, FAILED)
         db.session.commit()
-        _log_task_done(task)  # 16-D: 异常落终态记录
+        _log_task_done(task)  # 异常落终态记录
         return task
 
     if result.get('status') == SUCCESS:
@@ -134,12 +134,12 @@ def refresh_task(task, service=None):
         # Artwork 只在 SUCCESS 后创建（RUNNING→SUCCESS 仅一次 → 幂等）
         create_artwork_from_task(task)
         db.session.commit()
-        _log_task_done(task)  # 16-D: 完成日志
+        _log_task_done(task)  # 完成日志
     elif result.get('status') == FAILED:
         task.error_message = result.get('error_message') or 'AI任务失败'
         transition_status(task, FAILED)
         db.session.commit()
-        _log_task_done(task)  # 16-D: 失败终态日志
+        _log_task_done(task)  # 失败终态日志
     # RUNNING → 保持现状（等待下次轮询）
     return task
 
@@ -171,7 +171,7 @@ def fail_timeout_tasks():
     if timed_out:
         db.session.commit()
         for task in timed_out:
-            _log_task_done(task)  # 16-D: 超时清理落终态记录
+            _log_task_done(task)  # 超时清理落终态记录
     return len(timed_out)
 
 
@@ -183,8 +183,8 @@ def process_running_tasks():
     Returns:
         dict: {'processed': 处理数, 'success': 刷新后成功数,
                'failed': 刷新后失败数, 'running': 刷新后仍运行数,
-               'providers': {provider: 处理数},   # 16-C: 按 Provider 拆解
-               'cost': 本轮耗时秒}               # 16-C: 运行耗时（成本治理）
+               'providers': {provider: 处理数},   # 按 Provider 拆解
+               'cost': 本轮耗时秒}               # 记录本轮耗时
     """
     started = _monotonic()
     # 先批量超时清理（保证统计/扫描口径一致）
@@ -198,7 +198,7 @@ def process_running_tasks():
                .all())
     task_ids = [task.id for task in running]
 
-    # 16-C: Provider 分布（扫描到的 RUNNING 任务按 provider 计数）
+    # Provider 分布（扫描到的 RUNNING 任务按 provider 计数）
     provider_counts = {}
     for task in running:
         provider_counts[task.provider] = provider_counts.get(task.provider, 0) + 1
@@ -221,7 +221,7 @@ def process_running_tasks():
         for status, count in status_rows:
             result[status.lower()] = count
 
-    # 16-C: 成本治理扩展（providers + 本轮耗时秒）
+    # 返回 Provider 分布和本轮耗时
     result['providers'] = provider_counts
     result['cost'] = round(_monotonic() - started, 2)
     return result

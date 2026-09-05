@@ -41,10 +41,10 @@ class Config:
         'pool_pre_ping': True,
     }
 
-    # --- Redis（缓存/限流，阶段3 起使用，本阶段仅预留配置） ---
+    # --- Redis 预留配置（当前主流程未使用） ---
     REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 
-    # --- JWT（阶段3 实现，规范 4.1.2；JWT_SECRET_KEY 勿填真实值） ---
+    # --- JWT 认证（JWT_SECRET_KEY 不得使用示例值部署） ---
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'jwt-secret-key-change-in-production')
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
@@ -52,7 +52,7 @@ class Config:
     JWT_HEADER_NAME = 'Authorization'
     JWT_HEADER_TYPE = 'Bearer'
 
-    # --- Flask Session（阶段5.1：兼容 el-upload 的 Cookie 认证） ---
+    # --- Flask Session（兼容上传请求的 Cookie 认证） ---
     # 安全基线: HttpOnly + SameSite=Lax（防止 XSS 读取 / CSRF 跨站携带）
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
@@ -61,12 +61,12 @@ class Config:
     # Session 有效期（与 JWT 24h 对齐）
     PERMANENT_SESSION_LIFETIME = timedelta(hours=24)
 
-    # --- 文件上传（阶段5 使用，规范 4.1.2） ---
+    # --- 文件上传 ---
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app', 'static', 'uploads')
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'glb', 'gltf', 'obj', 'stl'}
 
-    # --- 大模型 API（阶段6-9 使用） ---
+    # --- AI Provider 配置 ---
     # AI Provider 选择: mock | hunyuan | glm（显式指定；默认 mock 用于开发/测试）
     AI_PROVIDER = os.getenv('AI_PROVIDER', 'mock')
     TENCENT_HUNYUAN_API_KEY = os.getenv('TENCENT_HUNYUAN_API_KEY', '')
@@ -74,7 +74,7 @@ class Config:
     TENCENT_HUNYUAN_BASE_URL = os.getenv(
         'TENCENT_HUNYUAN_BASE_URL', 'https://hunyuan.tencent.com/api/v1'
     )
-    # 腾讯混元生3D（阶段12-B: AI3D 产品真实接入，SDK 封装）
+    # 腾讯混元生3D（AI3D 产品真实接入，SDK 封装）
     # 凭据来自腾讯云控制台-CAM 访问管理（SecretId/SecretKey 成对），仅存 .env（gitignored）
     TENCENT_SECRET_ID = os.getenv('TENCENT_SECRET_ID', '')
     TENCENT_SECRET_KEY = os.getenv('TENCENT_SECRET_KEY', '')
@@ -83,34 +83,34 @@ class Config:
     TENCENT_HUNYUAN_ENDPOINT = os.getenv('TENCENT_HUNYUAN_ENDPOINT', '')
     # 生3D 模型名（按开通产品配置，如 hunyuan3d 系列；留空使用服务端默认）
     HUNYUAN_3D_MODEL = os.getenv('HUNYUAN_3D_MODEL', '')
-    # AI 异步任务超时（秒，默认 30 分钟；RUNNING 超时未终态 → FAILED，阶段13-B3）
+    # AI 异步任务超时（秒，默认 30 分钟；RUNNING 超时未终态 → FAILED）
     AI_TASK_TIMEOUT_SECONDS = int(os.getenv('AI_TASK_TIMEOUT_SECONDS', '1800'))
-    # AI 积分消耗规则（阶段15-B: 平台积分系统；对应腾讯 3D 生成实际消耗）
+    # AI 积分消耗规则（Provider 配置可覆盖默认值）
     AI_COST_3D_GENERATE = int(os.getenv('AI_COST_3D_GENERATE', '20'))
     AI_COST_STYLE_ANALYZE = int(os.getenv('AI_COST_STYLE_ANALYZE', '5'))
-    # AI 后台任务 Worker（阶段15-C）: 默认关闭（开发/测试不自动启动，避免多 Worker）
+    # AI 后台任务 Worker：默认关闭（开发/测试不自动启动，避免多 Worker）
     AI_WORKER_ENABLED = os.getenv('AI_WORKER_ENABLED', 'false').strip().lower() in ('1', 'true', 'yes')
     AI_WORKER_INTERVAL_SECONDS = int(os.getenv('AI_WORKER_INTERVAL_SECONDS', '30'))
-    # 后台管理员用户 ID（阶段16-A: 配置式，逗号分隔，如 '1,2'；不新增 User 角色字段）
+    # 后台管理员用户 ID（配置式，逗号分隔，如 '1,2'；不新增 User 角色字段）
     ADMIN_USER_IDS = os.getenv('ADMIN_USER_IDS', '')
-    # GLM 多模态（阶段9 预留配置，真实接入时需提供 Key）
+    # GLM 多模态配置（真实调用需提供 Key）
     GLM_API_KEY = os.getenv('GLM_API_KEY', '')
     GLM_BASE_URL = os.getenv('GLM_BASE_URL', 'https://open.bigmodel.cn/api/paas/v4')
-    # GLM 视觉模型（阶段11-A: 默认 glm-4v-flash 免费模型）
+    # GLM 视觉模型（默认 glm-4v-flash）
     GLM_MODEL = os.getenv('GLM_MODEL', 'glm-4v-flash')
     # GLM HTTP 请求超时（秒）
     GLM_TIMEOUT = int(os.getenv('GLM_TIMEOUT', '30'))
     # GLM 图片最大字节数（默认 10MB，防超大图片内存占用）
     GLM_MAX_IMAGE_SIZE = int(os.getenv('GLM_MAX_IMAGE_SIZE', '10485760'))
 
-    # --- 区块链（阶段10 使用，本阶段仅预留配置） ---
+    # --- 区块链预留配置（当前主流程未使用） ---
     TENCENT_TBAAS_API_KEY = os.getenv('TENCENT_TBAAS_API_KEY', '')
     TENCENT_TBAAS_BASE_URL = os.getenv('TENCENT_TBAAS_BASE_URL', '')
 
     # --- CORS ---
     CORS_ORIGINS = os.getenv('CORS_ORIGINS', '*').split(',')
 
-    # --- 限流（规范 4.1.2，阶段3 起启用） ---
+    # --- 限流预留配置（当前未接入 Flask-Limiter） ---
     RATELIMIT_DEFAULT = os.getenv('RATELIMIT_DEFAULT', '100 per minute')
     RATELIMIT_STORAGE_URL = REDIS_URL
 
@@ -136,7 +136,7 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     """生产环境配置"""
     DEBUG = False
-    # 生产环境必须显式提供以下变量（缺失时留空，启动阶段应校验）
+    # 生产环境必须显式提供以下变量（缺失时留空，由就绪检查报告）
     SECRET_KEY = os.getenv('SECRET_KEY')
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')

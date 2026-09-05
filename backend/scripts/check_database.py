@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""智绘锡承 - 数据库启动检查工具（阶段16-D 交付收口）
+"""智绘锡承 - 数据库启动检查工具
 
 用途: 部署/启动前只读检查数据库就绪状态，输出 OK / WARN：
   1. Migration 版本（alembic_version 与迁移链 head 一致性）

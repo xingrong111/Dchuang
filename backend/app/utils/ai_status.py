@@ -1,6 +1,6 @@
 # ============================================================
 # 智绘锡承 - AI 任务状态机
-# 位置: backend/app/utils/ai_status.py（阶段9 AI 基础设施）
+# 位置: backend/app/utils/ai_status.py
 #
 # 状态定义:
 #   PENDING  - 任务已创建，等待 Provider 受理

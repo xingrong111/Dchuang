@@ -1,6 +1,6 @@
 # ============================================================
 # 智绘锡承 - 用户中心 API
-# 位置: backend/app/api/v1/user.py（阶段15-B: 积分）
+# 位置: backend/app/api/v1/user.py
 #
 # 接口前缀约定: 前端 Vite 代理剥 /api，后端路由无前缀:
 #   GET /user/credits   （前端 GET /api/user/credits）
@@ -25,7 +25,7 @@ def _get_authenticated_user_or_401():
 
 @api_bp.route('/user/credits', methods=['GET'])
 def get_user_credits():
-    """用户积分余额与流水（阶段15-B，仅本人）
+    """用户积分余额与流水（仅本人）
 
     认证: get_authenticated_user()
     查询参数: page（默认1）, per_page（默认10, 最大50）
