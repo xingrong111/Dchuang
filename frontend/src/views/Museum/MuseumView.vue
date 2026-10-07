@@ -12,7 +12,7 @@
         <el-input
           v-model="searchKeyword"
           placeholder="搜索展品..."
-          prefix-icon="Search"
+          :prefix-icon="Search"
           @keyup.enter="handleSearch"
           clearable
         />
@@ -106,6 +106,39 @@
       </div>
     </div>
 
+    <!-- 馆藏珍品：数据来自后端作品接口，图片由后端静态服务提供 -->
+    <div class="collection-section" v-if="museumExhibits.length > 0">
+      <div class="collection-header">
+        <h2>馆藏珍品</h2>
+        <p>来自惠山泥人数字博物馆的经典馆藏，点击查看作品故事</p>
+      </div>
+      <div class="exhibit-grid">
+        <div
+          class="exhibit-card"
+          v-for="ex in museumExhibits"
+          :key="ex.id"
+          @click="openArtworkDetail(ex)"
+        >
+          <div class="exhibit-img-wrapper">
+            <img :src="ex.image" :alt="ex.title" loading="lazy" />
+            <span class="exhibit-tag">{{ ex.category }}</span>
+          </div>
+          <div class="exhibit-body">
+            <h3>{{ ex.title }}</h3>
+            <p class="exhibit-desc">{{ ex.description }}</p>
+            <div class="exhibit-tags">
+              <el-tag
+                v-for="t in ex.tags.filter(t => t !== '惠山泥人' && t !== '数字博物馆').slice(0, 3)"
+                :key="t"
+                size="small"
+                effect="plain"
+              >{{ t }}</el-tag>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="scene-container" ref="sceneContainer">
       <div class="scene-info" v-if="!currentItem">
         <el-icon size="48" color="#999"><Mouse /></el-icon>
@@ -187,16 +220,37 @@
         </div>
       </div>
     </el-dialog>
+
+    <!-- 馆藏作品故事详情 -->
+    <el-dialog v-model="showArtworkDialog" :title="selectedArtwork?.title" width="640px" top="30px">
+      <div v-if="selectedArtwork" class="artwork-detail">
+        <img class="artwork-img" :src="selectedArtwork.image" :alt="selectedArtwork.title" />
+        <div class="artwork-meta">
+          <span class="artwork-category">{{ selectedArtwork.category }}</span>
+          <el-tag
+            v-for="t in selectedArtwork.tags.filter(t => t !== '惠山泥人' && t !== '数字博物馆')"
+            :key="t"
+            size="small"
+            effect="plain"
+          >{{ t }}</el-tag>
+        </div>
+        <p class="artwork-story">{{ selectedArtwork.description }}</p>
+        <p class="artwork-source">—— 惠山泥人数字博物馆 馆藏</p>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Grid, Star, Picture, Box, Document, Mouse, Loading, Warning, Document as DocIcon, Clock, Brush, Avatar, Calendar } from '@element-plus/icons-vue'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+
+import { getWorks } from '@/api/workshop'
 
 const categories = [
   { label: '全部', value: '' },
@@ -217,11 +271,11 @@ const culturalItems = ref([
   {
     id: 1,
     name: '惠山泥人',
-    description: '无锡传统泥塑艺术的代表，以其独特的造型和鲜艳的色彩著称',
-    history: '惠山泥人起源于明代，距今已有400多年的历史。最初是民间艺人在惠山脚下制作的小型泥塑，后来逐渐发展成为具有地方特色的工艺品。',
-    features: ['造型夸张生动', '色彩鲜艳明快', '题材丰富多样', '兼具观赏与收藏价值'],
-    heritage: '2006年被列入第一批国家级非物质文化遗产名录，目前有多位国家级和省级传承人致力于技艺传承。',
-    modelPath: '/models/huishan.glb',
+    description: '第一批国家级非遗（编号Ⅶ-47），"三分塑，七分彩"的东方彩塑瑰宝',
+    history: '惠山泥人始于明末，盛于清代。惠山脚下稻田深处的乌黑黏土细腻油润、干而不裂，孕育了五里"泥人街"的百年盛况——鼎盛时期有泥人店数十家、作坊两百余处，"家家捏泥人，户户塑阿福"。',
+    features: ['粗货：模具彩绘，题材喜庆吉祥', '细货：手捏戏文，人物神形兼备', '"三分塑，七分彩"彩绘绝技', '取惠山乌土，温润细腻不开裂'],
+    heritage: '2006年列入第一批国家级非物质文化遗产名录，喻湘涟、王南仙、柳成荫等国家级代表性传承人守护至今；《大阿福》《手捏戏文》被誉为最富东方色彩的民间彩塑，与锡绣、竹刻并称"无锡三宝"。',
+    modelPath: '/models/daafu.glb',
     icon: '🗿',
     category: 'huishan',
     favorites: 342,
@@ -380,6 +434,40 @@ const favoriteItems = computed(() => {
   return [...culturalItems.value].sort((a, b) => b.favorites - a.favorites).slice(0, 5)
 })
 
+// ---- 馆藏珍品：来自后端作品接口（标签“数字博物馆”，官方账号“惠山数字博物馆”发布） ----
+const museumExhibits = ref([])
+const selectedArtwork = ref(null)
+const showArtworkDialog = ref(false)
+
+const fetchMuseumExhibits = async () => {
+  try {
+    const resp = await getWorks({ page: 1, per_page: 100 })
+    const list = resp.data || []
+    museumExhibits.value = list
+      .filter(w => Array.isArray(w.tags) && w.tags.includes('数字博物馆'))
+      .map(w => {
+        const tags = w.tags || []
+        return {
+          id: w.id,
+          title: w.title,
+          description: w.description,
+          image: w.thumbnail || '',
+          tags,
+          category: tags.find(t => ['粗货', '细货', '手捏戏文'].includes(t)) || '馆藏'
+        }
+      })
+  } catch {
+    // 后端不可用时静默隐藏馆藏板块，不影响分类展品展示
+  }
+}
+
+const openArtworkDetail = (ex) => {
+  selectedArtwork.value = ex
+  showArtworkDialog.value = true
+}
+
+onMounted(fetchMuseumExhibits)
+
 const getCategoryName = (category) => {
   const cat = categories.find(c => c.value === category)
   return cat ? cat.label : '其他'
@@ -420,10 +508,18 @@ const createScene = () => {
   camera.lookAt(0, 0, 0)
 
   renderer = new THREE.WebGLRenderer({ antialias: true })
+  renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.setSize(width, height)
-  renderer.setPixelRatio(window.devicePixelRatio)
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   renderer.shadowMap.enabled = true
   container.appendChild(renderer.domElement)
+
+  // PBR 环境反射：呈现釉面陶土质感
+  const pmrem = new THREE.PMREMGenerator(renderer)
+  const room = new RoomEnvironment()
+  scene.environment = pmrem.fromScene(room, 0.04).texture
+  room.dispose()
+  pmrem.dispose()
 
   controls = new OrbitControls(camera, renderer.domElement)
   controls.enableDamping = true
@@ -502,31 +598,34 @@ const loadModel = async (modelPath) => {
   let placeholderModel = null
 
   try {
-    const loader = new GLTFLoader()
+      const loader = new GLTFLoader()
 
-    await new Promise((resolve, reject) => {
-      loader.load(
-        modelPath,
-        (gltf) => {
-          const model = gltf.scene
-          model.scale.set(0.5, 0.5, 0.5)
-          model.position.set(0, 0, 0)
-          model.traverse((child) => {
-            if (child.isMesh) {
-              child.castShadow = true
-              child.receiveShadow = true
-            }
-          })
-          scene.add(model)
-          loading.value = false
-          resolve()
-        },
-        undefined,
-        (err) => {
-          reject(err)
-        }
-      )
-    })
+      await new Promise((resolve, reject) => {
+        loader.load(
+          modelPath,
+          (gltf) => {
+            const model = gltf.scene
+            const box = new THREE.Box3().setFromObject(model)
+            const size = box.getSize(new THREE.Vector3())
+            const scale = 2.6 / Math.max(size.x, size.y, size.z, 0.001)
+            model.scale.setScalar(scale)
+            model.position.sub(box.getCenter(new THREE.Vector3()).multiplyScalar(scale))
+            model.traverse((child) => {
+              if (child.isMesh) {
+                child.castShadow = true
+                child.receiveShadow = true
+              }
+            })
+            scene.add(model)
+            loading.value = false
+            resolve()
+          },
+          undefined,
+          (err) => {
+            reject(err)
+          }
+        )
+      })
   } catch (err) {
     error.value = `模型加载失败: ${err.message || '文件不存在或格式错误'}`
     loading.value = false
@@ -989,6 +1088,148 @@ onUnmounted(() => {
   font-size: 0.85rem;
   color: #999;
   margin-top: 5px;
+}
+
+/* ---- 馆藏珍品板块 ---- */
+.collection-section {
+  margin-top: 30px;
+  background: white;
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.collection-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: #2c3e50;
+}
+
+.collection-header p {
+  margin: 6px 0 20px;
+  color: #8a8a8a;
+  font-size: 0.9rem;
+}
+
+.exhibit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.exhibit-card {
+  border: 1px solid #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  background: #fff;
+}
+
+.exhibit-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(74, 144, 164, 0.18);
+}
+
+.exhibit-img-wrapper {
+  position: relative;
+  height: 180px;
+  overflow: hidden;
+  background: #f5f2ec;
+}
+
+.exhibit-img-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.exhibit-card:hover .exhibit-img-wrapper img {
+  transform: scale(1.05);
+}
+
+.exhibit-tag {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 3px 10px;
+  background: rgba(74, 144, 164, 0.9);
+  color: #fff;
+  border-radius: 12px;
+  font-size: 0.75rem;
+}
+
+.exhibit-body {
+  padding: 14px 16px 16px;
+}
+
+.exhibit-body h3 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  color: #2c3e50;
+}
+
+.exhibit-desc {
+  margin: 0 0 10px;
+  color: #777;
+  font-size: 0.83rem;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.exhibit-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ---- 馆藏作品故事详情 ---- */
+.artwork-detail {
+  text-align: center;
+}
+
+.artwork-img {
+  max-width: 100%;
+  max-height: 380px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.artwork-meta {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 4px;
+  flex-wrap: wrap;
+}
+
+.artwork-category {
+  padding: 4px 14px;
+  background: #4a90a4;
+  color: #fff;
+  border-radius: 14px;
+  font-size: 0.85rem;
+}
+
+.artwork-story {
+  margin: 14px auto 8px;
+  max-width: 540px;
+  color: #555;
+  line-height: 1.9;
+  text-align: justify;
+}
+
+.artwork-source {
+  color: #aaa;
+  font-size: 0.85rem;
+  text-align: right;
+  max-width: 540px;
+  margin: 0 auto;
 }
 
 @media (max-width: 992px) {

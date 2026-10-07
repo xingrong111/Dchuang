@@ -1,0 +1,25 @@
+{
+  "adult": {
+    "author": "Lee Perry-Smith / Infinite-Realities",
+    "license": "CC BY 3.0",
+    "source": "https://threejs.org/examples/models/gltf/LeePerrySmith/",
+    "assets": [
+      {
+        "file": "head-man.glb",
+        "bytes": 404976,
+        "sha256": "402b8a8ac9f03232e6d64b5962929703a069daf99d3c49ac8eb0e48bedc9c576"
+      },
+      {
+        "file": "head-man-color.jpg",
+        "bytes": 148269,
+        "sha256": "e976d73b31407f8d0967412bf468019ed26a5d5a32cf5811aabff7e816458a65"
+      }
+    ]
+  },
+  "child": {
+    "source": "Tencent Hunyuan 3D V3.1",
+    "derivedFrom": "body-jacket.glb",
+    "creationId": "df86419e-b77d-4f2b-bd5c-5846be4fda2d",
+    "changes": "Extract head above 74 percent of original body height; preserve texture and seal neck"
+  }
+}

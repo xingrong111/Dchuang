@@ -10,7 +10,12 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint . --fix --cache"
+    "models:export": "node scripts/export-models.mjs",
+    "models:check": "node scripts/check-assets.mjs",
+    "test": "node --test scripts/assembly.test.mjs scripts/model-factory.test.mjs scripts/product-assets.test.mjs scripts/workshop-assets.test.mjs scripts/workshop-clipping.test.mjs",
+    "lint": "eslint . --cache",
+    "lint:fix": "eslint . --fix --cache",
+    "products:export": "node scripts/export-products.mjs"
   },
   "dependencies": {
     "axios": "^1.18.1",
@@ -22,10 +27,12 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",
+    "@napi-rs/canvas": "^1.0.9",
     "@vitejs/plugin-vue": "^6.0.1",
     "eslint": "^9.37.0",
     "eslint-plugin-vue": "~10.5.0",
     "globals": "^16.4.0",
+    "meshoptimizer": "^1.3.0",
     "sass": "^1.102.0",
     "unplugin-auto-import": "^21.0.0",
     "unplugin-vue-components": "^32.1.0",

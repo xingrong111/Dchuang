@@ -1,0 +1,74 @@
+[
+  {
+    "id": "wuxi-afu-lotus",
+    "name": "莲生福意 · 阿福摆件",
+    "prompt": "无锡惠山泥人主题完整阿福摆件，可爱圆脸微笑童子，穿朱红团花衣袍，盘腿坐在小莲花台上，双手怀抱小瑞兽。头身一体自然衔接，完整双臂双手双腿，传统彩塑风格，青绿金色纹样，精致彩绘树脂质感，正面展示，PBR材质，无文字。",
+    "creationId": "ac64261d-006a-409a-81c1-d5143ae9a75b",
+    "submitted": true,
+    "assetId": "f555cf0a-17eb-413d-9545-b6d890cbcd16",
+    "modelType": "text2ModelV3.1",
+    "originalFile": "wuxi-afu-lotus.glb",
+    "downloaded": true,
+    "candidate": 0
+  },
+  {
+    "id": "wuxi-afu-pair",
+    "name": "双福临门 · 惠山童子",
+    "prompt": "无锡惠山泥人主题双童子摆件，一男一女两个圆脸微笑孩童并肩站立，各自有完整头部身体双臂双手双腿双脚。男童红色团花短褂女童青绿花衣，各捧一朵莲花，共用小圆台。传统彩塑造型，温暖可爱，精细彩绘树脂质感，正面，PBR，无文字。",
+    "creationId": "73f655c7-e5e1-43d2-bc74-9ab287b07d71",
+    "submitted": true,
+    "assetId": "4d5c0f9f-7ed5-48ea-8de9-03fbdbb02869",
+    "modelType": "text2ModelV3.1",
+    "originalFile": "wuxi-afu-pair.glb",
+    "downloaded": true,
+    "candidate": 0
+  },
+  {
+    "id": "wuxi-canmao",
+    "name": "蚕猫守福 · 彩塑猫摆件",
+    "prompt": "无锡惠山泥人蚕猫题材完整猫形摆件，圆润坐姿，完整身体四肢尾巴，双耳竖起，杏仁眼，憨态可爱。奶白底色，朱红青绿花纹与金色小花点彩，胸前小铃铛，脚下薄木质圆台。传统民间彩塑结合精致文创，细腻彩绘树脂质感，正面，PBR，无文字。",
+    "creationId": "73d944a4-24d2-46fd-8a14-bf00abd1704d",
+    "submitted": true,
+    "assetId": "c06f60e3-a94a-40d3-bf25-179d2bf35c21",
+    "modelType": "text2ModelV3.1",
+    "originalFile": "wuxi-canmao.glb",
+    "downloaded": true,
+    "candidate": 0
+  },
+  {
+    "id": "wuxi-opera-lady",
+    "name": "曲韵青衣 · 戏文人物",
+    "prompt": "无锡惠山手捏戏文主题完整青衣人物摆件，端庄微笑中国女子，黑色发髻精致头饰，青蓝戏服金色云纹，双臂完整，双手一前一侧持水袖，长裙下露出双脚，头身比例自然，稳立小圆台。精细传统彩塑，彩绘树脂质感，正面，PBR，无文字。",
+    "creationId": "b64416a6-787d-453d-bd72-41e20519f23f",
+    "submitted": true,
+    "assetId": "97227de0-d35c-4235-803b-12576a01e556",
+    "modelType": "text2ModelV3.1",
+    "originalFile": "wuxi-opera-lady.glb",
+    "downloaded": true,
+    "candidate": 0
+  },
+  {
+    "id": "wuxi-shouxing",
+    "name": "福寿绵长 · 寿星摆件",
+    "prompt": "无锡惠山泥人寿星题材完整老人摆件，慈祥微笑，长眉白须，高额头，穿暖红青绿长袍，完整双臂双手双腿双脚，一手捧寿桃一手拄拐杖，稳立薄圆台。身体头部一体自然衔接，传统民间彩塑，细腻彩绘树脂质感，正面，PBR，无文字。",
+    "creationId": "a62cb8e1-20a1-4177-82d5-1d0af8c29690",
+    "submitted": true,
+    "assetId": "e84c48df-0411-49c9-8801-4c90195e413e",
+    "modelType": "text2ModelV3.1",
+    "originalFile": "wuxi-shouxing.glb",
+    "downloaded": true,
+    "candidate": 0
+  },
+  {
+    "id": "body-scholar",
+    "name": "江南长衫",
+    "prompt": "独立完整中国男子长衫身体部件，无头部无脸，仅有短颈接口。浅米色青绿镶边江南传统长衫，完整双臂，左右双手自然垂在身侧，完整双腿双脚可见，穿黑色布鞋，自然站姿，正常成年男子身体比例。精致文创树脂雕塑，细腻衣纹，正面，PBR，无文字。",
+    "creationId": "b4c425ee-561b-4053-9c82-f92b267dd287",
+    "submitted": true,
+    "assetId": "1f98fad2-85b2-4428-8427-acab84eba6ac",
+    "modelType": "text2ModelV3.1",
+    "originalFile": "body-scholar.glb",
+    "downloaded": true,
+    "candidate": 0
+  }
+]

@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "instructions": "每个实际素材新增一条记录，附权利人许可文件；本模板不是授权凭证",
+  "assets": [],
+  "required_fields": ["asset_path", "author", "source_url", "license", "allowed_uses", "permission_file", "verified_on", "expires_on"]
+}

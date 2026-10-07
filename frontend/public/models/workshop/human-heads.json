@@ -1,0 +1,20 @@
+{
+  "source": "Tencent Hunyuan 3D V3.1",
+  "heads": [
+    {
+      "id": "head-child-smile",
+      "creationId": "0a927d3e-16f8-43b8-943a-99e434a40ef1",
+      "assetId": "d4166859-325a-460f-9526-55a8d6c509c2",
+      "file": "head-child-smile.glb",
+      "neckCut": 0.32
+    },
+    {
+      "id": "head-man-sunny",
+      "creationId": "d85015d6-1eb4-4161-bfda-fb8c11aa68ff",
+      "assetId": "e68e9291-2c55-47d6-8b8a-7e58b6c18760",
+      "file": "head-man-sunny.glb",
+      "neckCut": 0.34
+    }
+  ]
+}
+

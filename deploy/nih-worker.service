@@ -1,0 +1,15 @@
+[Unit]
+Description=NIH platform AI worker
+After=network.target nih-api.service
+
+[Service]
+User=nih
+WorkingDirectory=/srv/nih-platform/backend
+Environment=FLASK_CONFIG=production
+ExecStart=/srv/nih-platform/backend/.venv/bin/python worker.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

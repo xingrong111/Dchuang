@@ -1,0 +1,5 @@
+Infinite, 3D Head Scan by Lee Perry-Smith. Creative Commons Attribution 3.0 Unported.
+Based on a work at www.triplegangers.com / Infinite-Realities.
+License: https://creativecommons.org/licenses/by/3.0/
+Source: https://github.com/mrdoob/three.js/tree/dev/examples/models/gltf/LeePerrySmith
+Changes: applied original colour map, clay-like roughness, trimmed neck, normalized and fitted to body.

@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">文创商城</h1>
-        <p class="page-subtitle">将数字作品转化为实体文创产品</p>
+        <p class="page-subtitle">按名称与类别发现文创，查看设计细节，收藏喜欢的作品。</p>
       </div>
       <el-button @click="showCartDialog = true" type="primary" class="cart-btn">
         <el-icon><ShoppingCart /></el-icon>
@@ -11,12 +11,13 @@
       </el-button>
     </div>
 
+    <p class="commerce-note">当前目录包含原创文创设计，尚未实物销售。设计条目可搜索、浏览和收藏；正式上架且有库存的商品才能加入购物车。<RouterLink to="/shop/designs">阅读设计故事与查看三维模型 ↗</RouterLink></p>
     <div class="toolbar">
       <div class="search-bar">
         <el-input
           v-model="searchKeyword"
           placeholder="搜索商品..."
-          prefix-icon="Search"
+          :prefix-icon="Search"
           @keyup.enter="handleSearch"
           clearable
         />
@@ -37,7 +38,7 @@
           <el-option label="默认排序" value="default" />
           <el-option label="价格从低到高" value="price_asc" />
           <el-option label="价格从高到低" value="price_desc" />
-          <el-option label="销量优先" value="sales" />
+          
         </el-select>
       </div>
     </div>
@@ -64,7 +65,7 @@
             <el-slider
               v-model="priceRange"
               :min="0"
-              :max="500"
+              :max="priceCeiling"
               range
               show-input
             />
@@ -72,7 +73,7 @@
         </div>
 
         <div class="sidebar-card">
-          <h3><el-icon><StarFilled /></el-icon> 热门推荐</h3>
+          <h3><el-icon><StarFilled /></el-icon> 本页商品</h3>
           <div class="hot-list">
             <div v-for="(item, idx) in hotProducts" :key="item.id" class="hot-item" @click="viewProductDetail(item)">
               <span class="hot-rank" :class="'rank-' + (idx + 1)">{{ idx + 1 }}</span>
@@ -83,7 +84,9 @@
       </div>
 
       <div class="products-area">
-        <div v-if="filteredProducts.length === 0" class="empty-state">
+        <div v-if="productsLoading" class="empty-state" v-loading="true"><p>正在加载文创目录…</p></div>
+        <div v-else-if="productsError" class="empty-state"><p>文创目录暂时无法加载</p><el-button @click="loadProducts">重新加载</el-button></div>
+        <div v-else-if="filteredProducts.length === 0" class="empty-state">
           <el-icon size="64" color="#ccc"><Box /></el-icon>
           <p>没有找到相关商品</p>
           <el-button type="primary" @click="resetFilters">重置筛选</el-button>
@@ -92,7 +95,7 @@
           <div class="product-card" v-for="product in filteredProducts" :key="product.id">
             <div class="product-image-wrapper">
               <div class="product-image">
-                <img :src="product.image || '/assets/images/logo.svg'" :alt="product.name" />
+                <img :src="product.image || logoUrl" :alt="product.name" />
               </div>
               <div class="category-tag">{{ getCategoryName(product.category) }}</div>
               <div v-if="product.discount" class="discount-tag">{{ product.discount }}%</div>
@@ -100,18 +103,19 @@
             <div class="product-content">
               <h3 class="product-name">{{ product.name }}</h3>
               <p class="product-description">{{ product.description }}</p>
-              <div class="product-rating">
-                <el-rate :model-value="product.rating" disabled size="small" />
+              <div v-if="!product.specs?.display_only" class="product-rating">
+                <el-rate v-if="product.rating" :model-value="product.rating" disabled size="small" /><span v-else>暂无评分</span>
                 <span class="rating-count">({{ product.reviewCount }})</span>
               </div>
-              <p class="product-price">
-                <span class="current-price">{{ product.price }}</span>
+              <p v-if="!product.specs?.display_only" class="product-price">
+                <span class="current-price">{{ '¥' + product.price.toFixed(2) }}</span>
                 <span v-if="product.originalPrice" class="original-price">{{ product.originalPrice }}</span>
               </p>
-              <div class="product-sales">已售 {{ product.sales }}</div>
+              <p class="product-sales">{{ product.specs?.display_only ? '原创设计 · 尚未实物销售' : '库存 ' + product.stock + ' 件' }}</p>
               <div class="product-actions">
-                <el-button size="small" @click="viewProductDetail(product)">详情</el-button>
-                <el-button type="primary" size="small" @click="addToCart(product)">
+                <el-button size="small" @click="viewProductDetail(product)">详情</el-button><el-button size="small" :disabled="favoriteBusy" @click="favorite(product)">{{ favoriteIds.has(product.id)?'已收藏':'收藏' }}</el-button>
+                <el-button v-if="product.specs?.display_only" type="primary" size="small" @click="openDesign(product)">查看模型</el-button>
+                <el-button v-else type="primary" size="small" @click="addToCart(product)" :disabled="cartStore.busy || product.stock < 1">
                   <el-icon><Plus /></el-icon>
                   加入购物车
                 </el-button>
@@ -122,47 +126,49 @@
       </div>
     </div>
 
+    <el-pagination v-model:current-page="page" :page-size="24" :total="total" layout="total,prev,pager,next" @current-change="loadProducts" />
     <el-dialog title="商品详情" v-model="showDetailDialog" width="800px" top="30px">
       <div v-if="selectedProduct" class="product-detail">
         <div class="detail-main">
           <div class="detail-image-wrapper">
-            <img :src="selectedProduct.image || '/assets/images/logo.svg'" :alt="selectedProduct.name" class="detail-image" />
+            <img :src="selectedProduct.image || logoUrl" :alt="selectedProduct.name" class="detail-image" />
           </div>
           <div class="detail-info">
             <div class="detail-header">
               <h3>{{ selectedProduct.name }}</h3>
               <span class="detail-category">{{ getCategoryName(selectedProduct.category) }}</span>
             </div>
-            <div class="detail-rating">
+            <div v-if="selectedProduct.rating" class="detail-rating">
               <el-rate :model-value="selectedProduct.rating" disabled />
               <span>{{ selectedProduct.rating }}分</span>
               <span class="review-count">({{ selectedProduct.reviewCount }}条评价)</span>
             </div>
             <p class="detail-desc">{{ selectedProduct.description }}</p>
             <div class="detail-price-area">
-              <span class="current-price">{{ selectedProduct.price }}</span>
+              <span class="current-price">{{ selectedProduct.specs?.display_only ? '原创文创设计' : '¥' + selectedProduct.price.toFixed(2) }}</span>
               <span v-if="selectedProduct.originalPrice" class="original-price">{{ selectedProduct.originalPrice }}</span>
               <span v-if="selectedProduct.discount" class="discount-badge">限时{{ selectedProduct.discount }}%</span>
             </div>
-            <div class="sales-info">已售 {{ selectedProduct.sales }} 件</div>
+            <div class="sales-info">{{ selectedProduct.specs?.display_only ? '文创模型，尚未实物销售' : '库存 ' + selectedProduct.stock + ' 件' }}</div>
             <div class="detail-specs">
               <h4><el-icon><Document /></el-icon> 规格参数</h4>
               <ul>
-                <li v-for="(spec, key) in selectedProduct.specs" :key="key">{{ key }}: {{ spec }}</li>
+                <li v-for="(spec, key) in publicSpecs(selectedProduct)" :key="key">{{ key }}: {{ spec }}</li>
               </ul>
             </div>
-            <div class="detail-actions">
-              <el-input-number v-model="buyQuantity" :min="1" :max="10" style="width: 100px;" />
-              <el-button type="primary" @click="addToCart(selectedProduct)" size="large">
+            <div v-if="selectedProduct.specs?.display_only" class="detail-actions"><el-button type="primary" @click="openDesign(selectedProduct)">查看设计与三维模型</el-button></div>
+            <div v-else class="detail-actions">
+              <el-input-number v-model="buyQuantity" :min="1" :max="Math.max(1, Math.min(99, selectedProduct.stock))" style="width: 100px;" />
+              <el-button type="primary" @click="addToCart(selectedProduct, buyQuantity)" :disabled="cartStore.busy || selectedProduct.stock < 1" size="large">
                 <el-icon><ShoppingCart /></el-icon>
                 加入购物车
               </el-button>
-              <el-button type="danger" @click="buyNow(selectedProduct)" size="large">立即购买</el-button>
+              <el-button type="danger" @click="buyNow(selectedProduct)" :disabled="selectedProduct.stock < 1" size="large">立即购买</el-button>
             </div>
           </div>
         </div>
 
-        <div class="reviews-section">
+        <div v-if="!selectedProduct.specs?.display_only" class="reviews-section">
           <h4><el-icon><Message /></el-icon> 商品评价 ({{ selectedProduct.reviewCount }})</h4>
           <div class="reviews-list">
             <div v-for="review in selectedProduct.reviews" :key="review.id" class="review-item">
@@ -176,7 +182,7 @@
                 <img v-for="(img, idx) in review.images" :key="idx" :src="img" class="review-img" />
               </div>
             </div>
-            <p v-if="!selectedProduct.reviews || selectedProduct.reviews.length === 0" class="no-reviews">暂无评价</p>
+            <el-button v-if="reviewHasNext" @click="moreReviews">更多评价</el-button><p v-if="!selectedProduct.reviews || selectedProduct.reviews.length === 0" class="no-reviews">暂无评价</p>
           </div>
         </div>
       </div>
@@ -193,7 +199,7 @@
           <el-table-column label="商品" width="350">
             <template #default="scope">
               <div class="cart-item-info">
-                <img :src="scope.row.image || '/assets/images/logo.svg'" class="cart-item-img" />
+                <img :src="scope.row.image || logoUrl" class="cart-item-img" />
                 <span>{{ scope.row.name }}</span>
               </div>
             </template>
@@ -202,8 +208,10 @@
           <el-table-column label="数量" width="120">
             <template #default="scope">
               <el-input-number
-                v-model="scope.row.quantity"
+                :model-value="scope.row.quantity"
                 :min="1"
+                :max="Math.min(99, scope.row.stock)"
+                :disabled="cartStore.busy"
                 @change="updateQuantity(scope.row.id, $event)"
               />
             </template>
@@ -230,7 +238,7 @@
     </el-dialog>
 
     <el-dialog title="确认订单" v-model="showCheckoutDialog" width="750px" top="30px">
-      <div class="checkout-address">
+      <div class="checkout-address"><p>当前不收取线上支付，提交后等待商家确认。</p><el-select v-model="selectedAddress" clearable placeholder="选择已保存地址" @change="applyAddress"><el-option v-for="row in addresses" :key="row.id" :value="row.id" :label="row.receiver+' · '+row.address" /></el-select><RouterLink to="/shop/account">管理地址</RouterLink>
         <h4><el-icon><MapLocation /></el-icon> 收货地址</h4>
         <el-form :model="orderForm" label-width="100px">
           <el-form-item label="收货人">
@@ -250,7 +258,7 @@
 
       <div class="checkout-items">
         <h4><el-icon><ShoppingBag /></el-icon> 商品清单</h4>
-        <el-table :data="cartStore.items" stripe>
+        <el-table :data="checkoutItems" stripe>
           <el-table-column prop="name" label="商品" width="250" />
           <el-table-column prop="price" label="单价" width="100" />
           <el-table-column prop="quantity" label="数量" width="80" />
@@ -265,22 +273,22 @@
       <div class="checkout-summary">
         <div class="summary-row">
           <span>商品总价</span>
-          <span>{{ cartStore.totalPrice.toFixed(2) }}</span>
+          <span>{{ checkoutTotal.toFixed(2) }}</span>
         </div>
         <div class="summary-row">
           <span>运费</span>
-          <span>免运费</span>
+          <span>由商家确认；当前订单仅记录商品金额</span>
         </div>
         <div class="summary-row total">
-          <span>实付金额</span>
-          <span>{{ cartStore.totalPrice.toFixed(2) }}</span>
+          <span>订单金额</span>
+          <span>{{ checkoutTotal.toFixed(2) }}</span>
         </div>
       </div>
 
       <template #footer>
         <el-button @click="showCheckoutDialog = false">取消</el-button>
-        <el-button type="danger" @click="submitOrder" :disabled="!orderForm.receiver || !orderForm.phone || !orderForm.address" size="large">
-          提交订单 ({{ cartStore.totalPrice.toFixed(2) }})
+        <el-button type="danger" @click="submitOrder" :loading="submittingOrder" :disabled="!orderForm.receiver || !orderForm.phone || !orderForm.address" size="large">
+          提交订单 ({{ checkoutTotal.toFixed(2) }})
         </el-button>
       </template>
     </el-dialog>
@@ -288,12 +296,23 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import request from '@/api/index'
+import { getProducts, createOrder } from '@/api/shop'
 import { ElMessage } from 'element-plus'
 import { ShoppingCart, Plus, Search, Grid, TrendCharts, Box, StarFilled, Document, Message, MapLocation, ShoppingBag } from '@element-plus/icons-vue'
 import { useCartStore } from '@/store/cartStore'
+import { useUserStore } from '@/store/userStore'
+import logoUrl from '@/assets/images/logo.svg'
 
 const cartStore = useCartStore()
+const userStore = useUserStore()
+const router = useRouter()
+const openDesign = product => router.push({path:'/shop/designs',query:{design:product.specs.design_id}})
+const publicSpecs = product => Object.fromEntries(Object.entries(product.specs || {}).filter(([key]) => !['display_only','design_id','model_url'].includes(key)))
+const checkoutItems = ref([])
+const checkoutTotal = computed(() => checkoutItems.value.reduce((sum, item) => sum + Math.round(item.price * 100) * item.quantity, 0) / 100)
 
 const categories = [
   { label: '全部', value: '' },
@@ -304,134 +323,24 @@ const categories = [
   { label: '文创文具', value: 'stationery' }
 ]
 
-const products = ref([
-  {
-    id: 1,
-    name: '3D泥人摆件',
-    price: 99,
-    originalPrice: 129,
-    description: '个性化定制泥人模型，传承传统工艺',
-    specs: {材质: '树脂',尺寸: '10cm x 10cm',工艺: '3D打印'},
-    image: null,
-    category: 'clay',
-    rating: 4.8,
-    reviewCount: 156,
-    sales: 328,
-    discount: 23,
-    reviews: [
-      { id: 1, author: '小明', rating: 5, content: '非常精致，送给朋友很有面子！', time: '2024-01-10', images: [] },
-      { id: 2, author: '文化爱好者', rating: 5, content: '工艺精湛，细节到位', time: '2024-01-08', images: [] }
-    ]
-  },
-  {
-    id: 2,
-    name: '刺绣丝巾',
-    price: 159,
-    description: '数字刺绣图案定制，精美绝伦',
-    specs: {材质: '真丝',尺寸: '140cm x 140cm',工艺: '手工刺绣'},
-    image: null,
-    category: 'embroidery',
-    rating: 4.9,
-    reviewCount: 89,
-    sales: 156,
-    reviews: []
-  },
-  {
-    id: 3,
-    name: '紫砂茶杯',
-    price: 199,
-    originalPrice: 259,
-    description: '3D打印紫砂工艺，传统与现代的结合',
-    specs: {材质: '紫砂',容量: '200ml',工艺: '3D打印'},
-    image: null,
-    category: 'pottery',
-    rating: 4.7,
-    reviewCount: 234,
-    sales: 456,
-    discount: 23,
-    reviews: []
-  },
-  {
-    id: 4,
-    name: '手机壳',
-    price: 69,
-    description: '非遗元素个性化手机壳',
-    specs: {材质: 'TPU',兼容: 'iPhone/Android',工艺: '数码印刷'},
-    image: null,
-    category: 'digital',
-    rating: 4.5,
-    reviewCount: 567,
-    sales: 1234,
-    reviews: []
-  },
-  {
-    id: 5,
-    name: '非遗主题书签',
-    price: 29,
-    originalPrice: 39,
-    description: '精选非遗元素设计，精美书签套装',
-    specs: {材质: '金属',数量: '4枚/套',工艺: '烤漆'},
-    image: null,
-    category: 'stationery',
-    rating: 4.6,
-    reviewCount: 345,
-    sales: 876,
-    discount: 26,
-    reviews: []
-  },
-  {
-    id: 6,
-    name: '数字年画',
-    price: 89,
-    description: '传统年画数字复刻，现代装饰画',
-    specs: {材质: '宣纸',尺寸: '40cm x 50cm',工艺: '微喷'},
-    image: null,
-    category: 'stationery',
-    rating: 4.8,
-    reviewCount: 123,
-    sales: 234,
-    reviews: []
-  },
-  {
-    id: 7,
-    name: '紫砂茶壶',
-    price: 399,
-    originalPrice: 499,
-    description: '传统紫砂工艺，大师手作',
-    specs: {材质: '紫砂',容量: '350ml',工艺: '手工制作'},
-    image: null,
-    category: 'pottery',
-    rating: 4.9,
-    reviewCount: 67,
-    sales: 89,
-    discount: 20,
-    reviews: []
-  },
-  {
-    id: 8,
-    name: '非遗鼠标垫',
-    price: 39,
-    description: '非遗元素设计，办公必备',
-    specs: {材质: '橡胶+布面',尺寸: '30cm x 25cm',工艺: '数码印刷'},
-    image: null,
-    category: 'digital',
-    rating: 4.4,
-    reviewCount: 789,
-    sales: 2345,
-    reviews: []
-  }
-])
+const products = ref([])
+const productsLoading = ref(true), productsError = ref(false)
+const submittingOrder = ref(false)
+let requestKey = null
 
 const showDetailDialog = ref(false)
 const showCartDialog = ref(false)
 const showCheckoutDialog = ref(false)
 const selectedProduct = ref(null)
 const buyQuantity = ref(1)
+const reviewPage=ref(1),reviewHasNext=ref(false)
+const moreReviews=async()=>{const pid=selectedProduct.value?.id;if(!pid)return;try{const r=await request.get(`/shop/products/${pid}/reviews`,{params:{page:reviewPage.value+1}});if(selectedProduct.value?.id===pid){selectedProduct.value.reviews.push(...r.data);reviewPage.value++;reviewHasNext.value=!!r.meta.pagination.has_next}}catch{/*已提示*/}}
 
 const searchKeyword = ref('')
 const selectedCategory = ref('')
 const sortBy = ref('default')
-const priceRange = ref([0, 500])
+const priceRange = ref([0, 10000])
+const priceCeiling = computed(() => 10000)
 
 const orderForm = ref({
   receiver: '',
@@ -440,41 +349,24 @@ const orderForm = ref({
   note: ''
 })
 
-const filteredProducts = computed(() => {
-  let result = [...products.value]
-
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    result = result.filter(p =>
-      p.name.toLowerCase().includes(keyword) ||
-      p.description.toLowerCase().includes(keyword)
-    )
-  }
-
-  if (selectedCategory.value) {
-    result = result.filter(p => p.category === selectedCategory.value)
-  }
-
-  result = result.filter(p => p.price >= priceRange.value[0] && p.price <= priceRange.value[1])
-
-  switch (sortBy.value) {
-    case 'price_asc':
-      result.sort((a, b) => a.price - b.price)
-      break
-    case 'price_desc':
-      result.sort((a, b) => b.price - a.price)
-      break
-    case 'sales':
-      result.sort((a, b) => b.sales - a.sales)
-      break
-  }
-
-  return result
-})
-
-const hotProducts = computed(() => {
-  return [...products.value].sort((a, b) => b.sales - a.sales).slice(0, 5)
-})
+const filteredProducts=computed(()=>products.value)
+const hotProducts=computed(()=>products.value.slice(0,5))
+const page=ref(1),total=ref(0),favoriteIds=ref(new Set()),favoriteBusy=ref(false),addresses=ref([]),selectedAddress=ref(null)
+let sequence=0,timer
+const loadProducts=async()=>{
+ const current=++sequence
+ productsLoading.value=true;productsError.value=false
+ try{const r=await getProducts({page:page.value,per_page:24,q:searchKeyword.value,category:selectedCategory.value||undefined,sort:sortBy.value==='default'?'newest':sortBy.value,min_price:Math.round(priceRange.value[0]*100),max_price:priceRange.value[1]===priceCeiling.value?undefined:Math.round(priceRange.value[1]*100)});if(current===sequence){products.value=r.data;total.value=r.meta.pagination.total}}
+ catch{if(current===sequence)productsError.value=true}
+ finally{if(current===sequence)productsLoading.value=false}
+}
+watch([searchKeyword,selectedCategory,sortBy,priceRange],()=>{clearTimeout(timer);timer=setTimeout(()=>{page.value=1;loadProducts()},300)},{deep:true})
+onUnmounted(()=>{sequence++;clearTimeout(timer)})
+const loadFavorites=async()=>{if(!userStore.user?.token){favoriteIds.value=new Set();return}favoriteIds.value=new Set((await request.get('/shop/favorites')).data.map(p=>p.id))}
+const favorite=async product=>{if(!userStore.user?.token)return ElMessage.warning('请先登录');if(favoriteBusy.value)return;favoriteBusy.value=true;try{await request[favoriteIds.value.has(product.id)?'delete':'put']('/shop/favorites/'+product.id);await loadFavorites()}catch{/*已提示*/}finally{favoriteBusy.value=false}}
+watch(showCheckoutDialog,async value=>{if(value){try{addresses.value=(await request.get('/shop/addresses')).data;const row=addresses.value.find(a=>a.is_default);if(row){selectedAddress.value=row.id;applyAddress(row.id)}}catch{/*已提示*/}}})
+const applyAddress=id=>{const row=addresses.value.find(a=>a.id===id);if(row)orderForm.value={...orderForm.value,receiver:row.receiver,phone:row.phone,address:row.address}}
+onMounted(async()=>{await loadProducts();try{await loadFavorites();if(userStore.user?.token)await cartStore.refresh()}catch{/*已提示*/}})
 
 const getCategoryName = (category) => {
   const cat = categories.find(c => c.value === category)
@@ -482,66 +374,78 @@ const getCategoryName = (category) => {
 }
 
 const handleSearch = () => {
-  showDetailDialog.value = false
+  showDetailDialog.value = false;page.value=1;loadProducts()
 }
 
 const resetFilters = () => {
   searchKeyword.value = ''
   selectedCategory.value = ''
   sortBy.value = 'default'
-  priceRange.value = [0, 500]
+  priceRange.value = [0, priceCeiling.value]
 }
 
-const viewProductDetail = (product) => {
+const viewProductDetail = async (product) => {
   selectedProduct.value = product
   buyQuantity.value = 1
   showDetailDialog.value = true
+  try{const r=await request.get(`/shop/products/${product.id}/reviews`);if(selectedProduct.value?.id===product.id){selectedProduct.value={...product,reviews:r.data};reviewPage.value=1;reviewHasNext.value=!!r.meta.pagination.has_next}}catch{/*已提示*/}
 }
 
-const addToCart = (product) => {
-  if (!product) return
-  for (let i = 0; i < buyQuantity.value; i++) {
-    cartStore.addToCart(product)
-  }
-  ElMessage.success('已加入购物车')
-  showDetailDialog.value = false
-  buyQuantity.value = 1
+const addToCart = async (product, quantity = 1) => {
+  if (!userStore.user?.token) return ElMessage.warning('请先登录')
+  try {
+    if (await cartStore.addToCart(product, quantity)) {
+      ElMessage.success('已加入购物车'); showDetailDialog.value = false; buyQuantity.value = 1
+    }
+  } catch { /* 拦截器显示服务端错误 */ }
 }
 
 const buyNow = (product) => {
-  if (!product) return
-  cartStore.clearCart()
-  for (let i = 0; i < buyQuantity.value; i++) {
-    cartStore.addToCart(product)
-  }
+  if (!userStore.user?.token) return ElMessage.warning('请先登录')
+  checkoutItems.value = [{ ...product, quantity: buyQuantity.value }]
+  requestKey = null
   showDetailDialog.value = false
-  buyQuantity.value = 1
-  showCartDialog.value = true
+  showCheckoutDialog.value = true
 }
 
-const removeFromCart = (productId) => {
-  cartStore.removeFromCart(productId)
-  ElMessage.success('已移除')
+const removeFromCart = async productId => {
+  try { if (await cartStore.removeFromCart(productId)) ElMessage.success('已移除') } catch { /* 已提示 */ }
 }
-
-const updateQuantity = (productId, quantity) => {
-  cartStore.updateQuantity(productId, quantity)
+const updateQuantity = async (productId, quantity) => {
+  try { await cartStore.updateQuantity(productId, quantity) } catch { /* 绑定服务端数量，失败不污染本地 */ }
 }
-
 const checkout = () => {
+  if (!userStore.user?.token) return ElMessage.warning('请先登录')
+  checkoutItems.value = cartStore.items.map(item => ({ ...item }))
+  requestKey = null
   showCartDialog.value = false
   showCheckoutDialog.value = true
 }
 
-const submitOrder = () => {
-  ElMessage.success('订单提交成功！')
-  cartStore.clearCart()
-  showCheckoutDialog.value = false
-  orderForm.value = { receiver: '', phone: '', address: '', note: '' }
+const submitOrder = async () => {
+  if (submittingOrder.value) return
+  if (!checkoutItems.value.length) return ElMessage.warning('购物车为空')
+  submittingOrder.value = true
+  requestKey ||= crypto.randomUUID()
+  try {
+    const response = await createOrder({ ...orderForm.value, request_key: requestKey,
+      items: checkoutItems.value.map(item => ({ product_id: item.id, quantity: item.quantity })) })
+    ElMessage.success(`订单 ${response.data.id.slice(0, 8)} 已记录，等待商家确认`)
+    await cartStore.refresh()
+    checkoutItems.value = []
+    requestKey = null
+    showCheckoutDialog.value = false
+    orderForm.value = { receiver: '', phone: '', address: '', note: '' }
+  } catch { /* 后端错误由拦截器提示，保留购物车与幂等编号 */ }
+  finally { submittingOrder.value = false }
 }
+
 </script>
 
 <style scoped>
+.market{max-width:1240px}.products-area{min-width:0}.market .products-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.market .product-actions{flex-wrap:wrap;gap:8px}.market .product-actions .el-button{margin-left:0}.market .categories-sidebar{width:210px;position:sticky;top:90px;align-self:flex-start}.commerce-note{background:#f3eee5;padding:16px 20px;line-height:1.8;border-radius:12px;margin:0 0 24px;color:#72654f}.commerce-note a{color:#2d6172}.market .product-description{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}@media(min-width:1400px){.market .products-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:600px){.market .products-grid{grid-template-columns:1fr}.market .search-bar{width:100%;display:flex}.market .search-bar .el-input{width:auto;flex:1;min-width:0}.market .categories-sidebar{width:100%;position:static}.market .toolbar{padding:16px}.market .page-header{align-items:flex-start;gap:12px}}
+.commerce-note{line-height:1.8;color:#66756e}.commerce-note a{color:#2d6172}.product-actions{flex-wrap:wrap}.market :deep(.el-pagination){margin-top:24px;flex-wrap:wrap}
+
 .market {
   max-width: 1280px;
 }
@@ -724,7 +628,7 @@ const submitOrder = () => {
 .product-image img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .category-tag {
@@ -830,7 +734,7 @@ const submitOrder = () => {
 .detail-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 16px;
   background: #f5f5f5;
 }

@@ -1,0 +1,69 @@
+{
+  "date": "2026-10-07",
+  "source": "https://3d.hunyuan.tencent.com/",
+  "generation": "six confirmed website jobs, original downloads retained; no paid generation requested",
+  "displayedRemainingQuota": 14,
+  "community": 6,
+  "products": 10,
+  "newModels": [
+    {
+      "id": "wuxi-afu-lotus",
+      "name": "莲生福意 · 阿福摆件",
+      "creationId": "ac64261d-006a-409a-81c1-d5143ae9a75b",
+      "assetId": "f555cf0a-17eb-413d-9545-b6d890cbcd16",
+      "candidate": 0
+    },
+    {
+      "id": "wuxi-afu-pair",
+      "name": "双福临门 · 惠山童子",
+      "creationId": "73f655c7-e5e1-43d2-bc74-9ab287b07d71",
+      "assetId": "4d5c0f9f-7ed5-48ea-8de9-03fbdbb02869",
+      "candidate": 0
+    },
+    {
+      "id": "wuxi-canmao",
+      "name": "蚕猫守福 · 彩塑猫摆件",
+      "creationId": "73d944a4-24d2-46fd-8a14-bf00abd1704d",
+      "assetId": "c06f60e3-a94a-40d3-bf25-179d2bf35c21",
+      "candidate": 0
+    },
+    {
+      "id": "wuxi-opera-lady",
+      "name": "曲韵青衣 · 戏文人物",
+      "creationId": "b64416a6-787d-453d-bd72-41e20519f23f",
+      "assetId": "97227de0-d35c-4235-803b-12576a01e556",
+      "candidate": 0
+    },
+    {
+      "id": "wuxi-shouxing",
+      "name": "福寿绵长 · 寿星摆件",
+      "creationId": "a62cb8e1-20a1-4177-82d5-1d0af8c29690",
+      "assetId": "e84c48df-0411-49c9-8801-4c90195e413e",
+      "candidate": 0
+    },
+    {
+      "id": "body-scholar",
+      "name": "江南长衫",
+      "creationId": "b4c425ee-561b-4053-9c82-f92b267dd287",
+      "assetId": "1f98fad2-85b2-4428-8427-acab84eba6ac",
+      "candidate": 0
+    }
+  ],
+  "changes": [
+    "Whole models replace assembled community and homepage recommendations",
+    "Five additional heritage-inspired figurines",
+    "Headless scholar body replaces armor body",
+    "Museum expanded to nine culture paragraphs and two paragraphs per exhibit",
+    "Craft photo viewer supports enlargement, navigation and closing",
+    "Product cover images contain whole figures; no design-display label"
+  ],
+  "verification": {
+    "frontendTests": 48,
+    "backendCatalogTests": 2,
+    "museumBrowserChecks": 13,
+    "productionBuild": "passed",
+    "lint": "passed",
+    "publicPageChecks": 120
+  },
+  "culturalReference": "https://www.ihchina.cn/art/detail/id/14041.html"
+}

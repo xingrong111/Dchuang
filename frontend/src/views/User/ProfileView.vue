@@ -4,7 +4,7 @@
       <div class="avatar-section">
         <div class="avatar-wrapper">
           <div class="avatar">
-            <User />
+            <img v-if="userStore.user?.avatar && userStore.user.avatar !== 'default_avatar.png'" :src="userStore.user.avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt="头像" /><User v-else />
           </div>
           <label class="avatar-edit-btn" @click="uploadAvatar">
             <el-icon><EditPen /></el-icon>
@@ -27,7 +27,7 @@
           <Upload />
         </div>
         <div class="stat-info">
-          <span class="stat-value">{{ myWorks.length }}</span>
+          <span class="stat-value">{{ statistics.works }}</span>
           <span class="stat-label">作品数</span>
         </div>
       </div>
@@ -36,17 +36,17 @@
           <Star />
         </div>
         <div class="stat-info">
-          <span class="stat-value">{{ myCollections.length }}</span>
+          <span class="stat-value">{{ statistics.collections }}</span>
           <span class="stat-label">收藏数</span>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon">
-          <ShoppingCart />
+        <div class="stat-icon credits">
+          <Wallet />
         </div>
         <div class="stat-info">
-          <span class="stat-value">{{ myOrders.length }}</span>
-          <span class="stat-label">订单数</span>
+          <span class="stat-value">{{ credits ?? '--' }}</span>
+          <span class="stat-label">积分余额</span>
         </div>
       </div>
       <div class="stat-card">
@@ -54,7 +54,7 @@
           <Star />
         </div>
         <div class="stat-info">
-          <span class="stat-value">{{ totalLikes }}</span>
+          <span class="stat-value">{{ statistics.likes }}</span>
           <span class="stat-label">获赞数</span>
         </div>
       </div>
@@ -71,8 +71,8 @@
             <div class="filter-options">
               <el-select v-model="worksFilter" placeholder="筛选" style="width: 120px;">
                 <el-option label="全部" value="all" />
-                <el-option label="已发布" value="published" />
-                <el-option label="草稿" value="draft" />
+                <el-option label="已发布" value="已发布" />
+                <el-option label="私有" value="私有" />
               </el-select>
               <el-select v-model="worksSort" placeholder="排序" style="width: 120px;">
                 <el-option label="最新发布" value="newest" />
@@ -89,7 +89,7 @@
             <div v-else class="works-grid">
               <div class="work-card" v-for="work in filteredWorks" :key="work.id">
                 <div class="work-image-wrapper">
-                  <img :src="work.image || '/assets/images/logo.svg'" :alt="work.title" />
+                  <img :src="work.thumbnail || logoUrl" :alt="work.title" />
                   <div class="work-status" :class="work.status">{{ work.status }}</div>
                 </div>
                 <div class="work-content">
@@ -100,8 +100,9 @@
                   </div>
                   <div class="work-actions">
                     <el-button size="small" @click="viewWorkDetail(work)">查看</el-button>
-                    <el-button size="small">编辑</el-button>
                     <el-button size="small" type="danger" @click="deleteWork(work)">删除</el-button>
+                    <el-button size="small" @click="submitCertificate(work)">提交存证</el-button>
+                    <el-button size="small" @click="verifyCertificate(work)">验证存证</el-button>
                   </div>
                 </div>
               </div>
@@ -110,95 +111,40 @@
         </el-tab-pane>
 
         <el-tab-pane label="我的收藏" name="collections">
-          <div class="tab-toolbar">
-            <el-select v-model="collectionsFilter" placeholder="筛选" style="width: 120px;">
-              <el-option label="全部" value="all" />
-              <el-option label="作品" value="work" />
-              <el-option label="商品" value="product" />
-            </el-select>
-          </div>
           <div class="collections-list">
-            <div v-if="filteredCollections.length === 0" class="empty-state">
+            <div v-for="work in collections" :key="work.id" class="work-card" @click="viewWorkDetail({ ...work, likes: work.like_count, views: work.view_count })"><h4>{{ work.title }}</h4><p>{{ work.description }}</p></div>
+            <div v-if="!collections.length" class="empty-state">
               <el-icon size="64" color="#ccc"><Star /></el-icon>
-              <p>还没有收藏任何内容</p>
-              <el-button type="primary" @click="$router.push('/community')">去发现</el-button>
-            </div>
-            <div v-else class="works-grid">
-              <div class="work-card" v-for="work in filteredCollections" :key="work.id">
-                <div class="work-image-wrapper">
-                  <img :src="work.image || '/assets/images/logo.svg'" :alt="work.title" />
-                  <div class="collection-type">{{ work.type === 'work' ? '作品' : '商品' }}</div>
-                </div>
-                <div class="work-content">
-                  <h4>{{ work.title }}</h4>
-                  <p class="author">by {{ work.author }}</p>
-                  <div class="work-stats">
-                    <span><el-icon><Star /></el-icon> {{ work.likes }}</span>
-                  </div>
-                  <div class="work-actions">
-                    <el-button size="small" @click="viewCollectionDetail(work)">查看</el-button>
-                    <el-button size="small" type="danger" @click="removeCollection(work)">取消收藏</el-button>
-                  </div>
-                </div>
-              </div>
+              <p>还没有收藏作品</p>
+              <el-button type="primary" @click="$router.push('/community')">去社区逛逛</el-button>
             </div>
           </div>
         </el-tab-pane>
 
-        <el-tab-pane label="我的订单" name="orders">
+        <el-tab-pane label="历史订单" name="orders">
+          <p>当前文创页面为概念展示，不提供购买。此处保留历史演示订单记录。</p>
           <div class="tab-toolbar">
             <el-select v-model="ordersFilter" placeholder="订单状态" style="width: 120px;">
               <el-option label="全部" value="all" />
-              <el-option label="待付款" value="待付款" />
+              <el-option label="待确认" value="待确认" /><el-option label="已取消" value="已取消" />
               <el-option label="待发货" value="待发货" />
               <el-option label="已发货" value="已发货" />
               <el-option label="已完成" value="已完成" />
             </el-select>
           </div>
           <div class="orders-list">
-            <div v-if="filteredOrders.length === 0" class="empty-state">
+            <div v-for="order in filteredOrders" :key="order.id" class="work-card"><h4>订单 {{ order.id.slice(0, 8) }} · {{ order.status }}</h4><p v-for="item in order.items" :key="item.product_id">{{ item.name }} × {{ item.quantity }}</p><p>合计 ¥{{ order.total }}</p><el-button v-if="order.status === '待确认'" @click="doCancelOrder(order)">取消订单</el-button></div>
+            <div v-if="!filteredOrders.length" class="empty-state">
               <el-icon size="64" color="#ccc"><ShoppingCart /></el-icon>
-              <p>还没有订单</p>
-              <el-button type="primary" @click="$router.push('/shop')">去购物</el-button>
-            </div>
-            <div v-else class="orders-list-container">
-              <div v-for="order in filteredOrders" :key="order.id" class="order-card">
-                <div class="order-header">
-                  <span class="order-id">订单号: {{ order.id }}</span>
-                  <el-tag :type="getStatusType(order.status)">{{ order.status }}</el-tag>
-                </div>
-                <div class="order-items">
-                  <div v-for="item in order.items" :key="item.id" class="order-item">
-                    <img :src="item.image || '/assets/images/logo.svg'" class="order-item-img" />
-                    <div class="order-item-info">
-                      <p class="order-item-name">{{ item.name }}</p>
-                      <p class="order-item-spec">规格: {{ item.spec }}</p>
-                      <div class="order-item-price-row">
-                        <span class="order-item-price">{{ item.price }}</span>
-                        <span class="order-item-quantity">x{{ item.quantity }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="order-footer">
-                  <span class="order-time">{{ order.createTime }}</span>
-                  <div class="order-total">
-                    <span>合计: </span>
-                    <strong>{{ order.totalPrice }}</strong>
-                  </div>
-                  <div class="order-actions">
-                    <el-button v-if="order.status === '待付款'" type="primary" @click="payOrder(order)">立即付款</el-button>
-                    <el-button v-if="order.status === '待发货'" @click="remindSeller(order)">提醒发货</el-button>
-                    <el-button v-if="order.status === '已发货'" type="success" @click="confirmReceipt(order)">确认收货</el-button>
-                    <el-button v-if="order.status === '已完成'" @click="viewOrder(order)">查看详情</el-button>
-                    <el-button @click="viewOrder(order)">订单详情</el-button>
-                  </div>
-                </div>
-              </div>
+              <p>暂无符合条件的订单</p>
+              <el-button type="primary" @click="$router.push('/shop')">浏览文创设计</el-button>
             </div>
           </div>
         </el-tab-pane>
 
+        <el-tab-pane label="创作任务历史" name="ai-history">
+          <el-table :data="aiHistory"><el-table-column prop="task_type" label="类型"/><el-table-column prop="provider" label="服务"/><el-table-column prop="status" label="状态"/><el-table-column prop="error_message" label="错误"/><el-table-column label="模型"><template #default="{ row }"><a v-if="row.artwork?.model_url || row.result_url" :href="row.artwork?.model_url || row.result_url" target="_blank" rel="noopener">下载模型</a></template></el-table-column></el-table>
+        </el-tab-pane>
         <el-tab-pane label="个人设置" name="settings">
           <div class="settings-container">
             <div class="settings-section">
@@ -219,9 +165,7 @@
                       <User />
                     </div>
                     <el-upload
-                      action="/api/user/upload-avatar"
-                      :on-success="handleAvatarUpload"
-                      :on-error="handleAvatarError"
+                      :http-request="doUploadAvatar"
                       :show-file-list="false"
                       accept="image/*"
                     >
@@ -253,30 +197,21 @@
               </el-form>
             </div>
 
-            <div class="settings-section">
-              <h3><el-icon><Lock /></el-icon> 安全设置</h3>
-              <div class="setting-item">
-                <span>账号绑定</span>
-                <el-switch v-model="bindPhone" />
-              </div>
-              <div class="setting-item">
-                <span>邮箱验证</span>
-                <el-switch v-model="verifyEmail" />
-              </div>
-              <div class="setting-item">
-                <span>开启推送通知</span>
-                <el-switch v-model="pushNotification" />
-              </div>
-            </div>
+
+
           </div>
         </el-tab-pane>
       </el-tabs>
+      <el-pagination v-if="activeTab !== 'settings' && totals[activeTab] > 12"
+        :current-page="pages[activeTab]" :page-size="12" :total="totals[activeTab]"
+        layout="prev, pager, next, total" @current-change="changePage" />
     </div>
 
     <el-dialog title="作品详情" v-model="showWorkDialog" width="650px" top="30px">
       <div v-if="selectedWork" class="work-detail-content">
-        <img :src="selectedWork.image || '/assets/images/logo.svg'" class="detail-img" />
+        <img :src="selectedWork.thumbnail || logoUrl" class="detail-img" />
         <h3>{{ selectedWork.title }}</h3>
+        <ModelPreview v-if="selectedWork.model_url" :url="selectedWork.model_url" />
         <p>{{ selectedWork.description }}</p>
         <div class="detail-stats">
           <span><el-icon><Star /></el-icon> {{ selectedWork.likes }}</span>
@@ -284,87 +219,34 @@
         </div>
       </div>
     </el-dialog>
-
-    <el-dialog title="订单详情" v-model="showOrderDialog" width="750px" top="30px">
-      <div v-if="selectedOrder" class="order-detail-content">
-        <div class="detail-section">
-          <h4><el-icon><Document /></el-icon> 订单信息</h4>
-          <div class="detail-row">
-            <span>订单号</span>
-            <span>{{ selectedOrder.id }}</span>
-          </div>
-          <div class="detail-row">
-            <span>下单时间</span>
-            <span>{{ selectedOrder.createTime }}</span>
-          </div>
-          <div class="detail-row">
-            <span>订单状态</span>
-            <el-tag :type="getStatusType(selectedOrder.status)">{{ selectedOrder.status }}</el-tag>
-          </div>
-        </div>
-
-        <div class="detail-section">
-          <h4><el-icon><MapLocation /></el-icon> 收货信息</h4>
-          <div class="detail-row">
-            <span>收货人</span>
-            <span>{{ selectedOrder.receiver }}</span>
-          </div>
-          <div class="detail-row">
-            <span>联系电话</span>
-            <span>{{ selectedOrder.phone }}</span>
-          </div>
-          <div class="detail-row">
-            <span>收货地址</span>
-            <span>{{ selectedOrder.address }}</span>
-          </div>
-        </div>
-
-        <div class="detail-section">
-          <h4><el-icon><ShoppingBag /></el-icon> 商品清单</h4>
-          <el-table :data="selectedOrder.items" stripe>
-            <el-table-column prop="name" label="商品" />
-            <el-table-column prop="spec" label="规格" />
-            <el-table-column prop="price" label="单价" />
-            <el-table-column prop="quantity" label="数量" />
-            <el-table-column label="小计">
-              <template #default="scope">{{ (scope.row.price * scope.row.quantity).toFixed(2) }}</template>
-            </el-table-column>
-          </el-table>
-        </div>
-
-        <div class="detail-section">
-          <h4><el-icon><Wallet /></el-icon> 费用明细</h4>
-          <div class="detail-row">
-            <span>商品总价</span>
-            <span>{{ selectedOrder.totalPrice }}</span>
-          </div>
-          <div class="detail-row">
-            <span>运费</span>
-            <span>免运费</span>
-          </div>
-          <div class="detail-row total">
-            <span>实付金额</span>
-            <span>{{ selectedOrder.totalPrice }}</span>
-          </div>
-        </div>
-      </div>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { ElMessage, ElDialog, ElTag, ElTable, ElTableColumn } from 'element-plus'
-import { User, Upload, Star, StarFilled, ShoppingCart, EditPen, Plus, Picture, Key, Lock, Document, MapLocation, ShoppingBag, Wallet } from '@element-plus/icons-vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import ModelPreview from '@/components/ModelPreview.vue'
+import logoUrl from '@/assets/images/logo.svg'
+import { ElMessage, ElDialog } from 'element-plus'
+import { User, Upload, Star, ShoppingCart, EditPen, Plus, Picture, Key, Wallet } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/userStore'
+import { deleteWork as deleteWorkApi, certifyWork, getCertificate } from '@/api/workshop'
+import { ElMessageBox } from 'element-plus'
+import { getUserCredits, uploadAvatar as uploadAvatarApi, updateProfile, updatePassword, getCollections, getOwnWorks, getUserStatistics } from '@/api/user'
+import { getOrders, cancelOrder } from '@/api/shop'
+import { getAIHistory } from '@/api/ai'
 
 const userStore = useUserStore()
 const activeTab = ref('works')
+const statistics = ref({ works: 0, collections: 0, likes: 0 })
+const pages = ref({ works: 1, collections: 1, orders: 1, 'ai-history': 1 })
+const totals = ref({ works: 0, collections: 0, orders: 0, 'ai-history': 0 })
+const refreshStatistics = async () => { statistics.value = (await getUserStatistics()).data }
+
 
 const profileForm = ref({
   username: userStore.user?.username || '',
   email: userStore.user?.email || '',
-  bio: ''
+  bio: userStore.user?.bio || ''
 })
 
 const passwordForm = ref({
@@ -373,168 +255,118 @@ const passwordForm = ref({
   confirmPassword: ''
 })
 
-const bindPhone = ref(false)
-const verifyEmail = ref(true)
-const pushNotification = ref(true)
 
 const worksFilter = ref('all')
 const worksSort = ref('newest')
-const collectionsFilter = ref('all')
 const ordersFilter = ref('all')
 
 const showWorkDialog = ref(false)
-const showOrderDialog = ref(false)
 const selectedWork = ref(null)
-const selectedOrder = ref(null)
 
-const myWorks = ref([
-  { id: 1, title: '我的第一个作品', description: '这是我的第一个创作作品', likes: 12, views: 56, image: null, status: '已发布' },
-  { id: 2, title: '惠山泥人创作', description: '传统惠山泥人风格作品', likes: 8, views: 34, image: null, status: '已发布' },
-  { id: 3, title: '数字锡绣设计', description: '锡绣风格数字艺术作品', likes: 23, views: 89, image: null, status: '草稿' }
-])
+// --- 真实数据（后端接入） ---
+const credits = ref(null)
+const myWorks = ref([])
+const worksLoading = ref(false)
+let worksRequest = 0
+const tabRequests = {}
 
-const myCollections = ref([
-  { id: 101, title: '现代风格惠山泥人', author: '创意达人', likes: 124, image: null, type: 'work' },
-  { id: 102, title: '数字锡绣-江南水乡', author: '绣娘传人', likes: 89, image: null, type: 'work' },
-  { id: 103, title: '3D泥人摆件', author: '文创商城', likes: 328, image: null, type: 'product' }
-])
-
-const myOrders = ref([
-  {
-    id: 'DD20240101001',
-    createTime: '2024-01-01 10:30',
-    status: '已完成',
-    totalPrice: 199,
-    receiver: '张三',
-    phone: '138****1234',
-    address: '江苏省无锡市滨湖区XX街道XX小区1栋101室',
-    items: [
-      { id: 1, name: '3D泥人摆件', spec: '树脂材质 / 10cm x 10cm', price: 99, quantity: 2 }
-    ]
-  },
-  {
-    id: 'DD20240105002',
-    createTime: '2024-01-05 14:20',
-    status: '待发货',
-    totalPrice: 69,
-    receiver: '张三',
-    phone: '138****1234',
-    address: '江苏省无锡市滨湖区XX街道XX小区1栋101室',
-    items: [
-      { id: 2, name: '手机壳', spec: 'TPU材质 / iPhone 14', price: 69, quantity: 1 }
-    ]
-  },
-  {
-    id: 'DD20240110003',
-    createTime: '2024-01-10 09:15',
-    status: '待付款',
-    totalPrice: 298,
-    receiver: '张三',
-    phone: '138****1234',
-    address: '江苏省无锡市滨湖区XX街道XX小区1栋101室',
-    items: [
-      { id: 3, name: '紫砂茶杯', spec: '紫砂材质 / 200ml', price: 199, quantity: 1 },
-      { id: 4, name: '非遗主题书签', spec: '金属材质 / 4枚/套', price: 29, quantity: 3 }
-    ]
-  },
-  {
-    id: 'DD20240112004',
-    createTime: '2024-01-12 16:45',
-    status: '已发货',
-    totalPrice: 159,
-    receiver: '张三',
-    phone: '138****1234',
-    address: '江苏省无锡市滨湖区XX街道XX小区1栋101室',
-    items: [
-      { id: 5, name: '刺绣丝巾', spec: '真丝材质 / 140cm x 140cm', price: 159, quantity: 1 }
-    ]
+const loadCredits = async () => {
+  try {
+    const resp = await getUserCredits({ page: 1, per_page: 1 })
+    credits.value = resp.data?.balance ?? null
+  } catch {
+    credits.value = null
   }
-])
-
-const totalLikes = computed(() => {
-  return myWorks.value.reduce((sum, work) => sum + work.likes, 0)
-})
-
-const filteredWorks = computed(() => {
-  let result = [...myWorks.value]
-
-  if (worksFilter.value !== 'all') {
-    result = result.filter(w => w.status === worksFilter.value)
-  }
-
-  if (worksSort.value === 'likes') {
-    result.sort((a, b) => b.likes - a.likes)
-  } else {
-    result.sort((a, b) => b.id - a.id)
-  }
-
-  return result
-})
-
-const filteredCollections = computed(() => {
-  if (collectionsFilter.value === 'all') {
-    return myCollections.value
-  }
-  return myCollections.value.filter(c => c.type === collectionsFilter.value)
-})
-
-const filteredOrders = computed(() => {
-  if (ordersFilter.value === 'all') {
-    return myOrders.value
-  }
-  return myOrders.value.filter(o => o.status === ordersFilter.value)
-})
-
-const getStatusType = (status) => {
-  const types = {
-    '待付款': 'warning',
-    '待发货': 'primary',
-    '已发货': 'success',
-    '已完成': 'info'
-  }
-  return types[status] || 'info'
 }
+
+const fetchMyWorks = async () => {
+  const authorId = userStore.user?.id
+  if (!authorId) return
+  worksLoading.value = true
+  const version = ++worksRequest
+  try {
+    const resp = await getOwnWorks({ page: pages.value.works, per_page: 12, sort: worksSort.value === 'likes' ? 'likes' : 'latest', visibility: worksFilter.value === 'all' ? undefined : worksFilter.value === '私有' ? 'private' : 'public' })
+    if (version !== worksRequest) return
+    totals.value.works = resp.meta?.pagination?.total || 0
+    myWorks.value = (resp.data || []).map((w) => ({
+      ...w,
+      likes: w.like_count ?? 0,
+      views: w.view_count ?? 0,
+      status: w.is_public ? '已发布' : '私有'
+    }))
+  } finally {
+    if (version === worksRequest) worksLoading.value = false
+  }
+}
+
+onMounted(async () => {
+  try { await Promise.all([loadCredits(), fetchMyWorks(), refreshStatistics()]) }
+  catch { /* API 拦截器提示 */ }
+})
+
+const filteredWorks = computed(() => myWorks.value)
+watch([worksFilter, worksSort], async () => {
+  pages.value.works = 1
+  try { await fetchMyWorks() } catch { /* API 拦截器提示 */ }
+})
+watch(ordersFilter, () => { pages.value.orders = 1; handleTabChange('orders') })
 
 const editProfile = () => {
   activeTab.value = 'settings'
 }
-
-const saveProfile = () => {
-  ElMessage.success('资料保存成功')
+const submitCertificate = async work => {
+  await ElMessageBox.confirm('将向配置的区块链节点提交作品指纹。节点可能收取链上费用，确认提交？', '作品存证')
+  const response = await certifyWork(work.id)
+  ElMessage.info(response.data.status === 'CONFIRMED' ? '作品已存证' : '交易已提交，等待链上确认')
+}
+const verifyCertificate = async work => {
+  const response = await getCertificate(work.id)
+  await ElMessageBox.alert(`状态：${response.data.status}；内容指纹：${response.data.digest}；交易：${response.data.transaction_id || '尚未提交'}`, '存证验证')
 }
 
-const changePassword = () => {
-  if (!passwordForm.value.currentPassword) {
-    ElMessage.warning('请输入当前密码')
-    return
+const saveProfile = async () => {
+  if (savingProfile.value) return
+  savingProfile.value = true
+  try {
+    await updateProfile({ username: profileForm.value.username, bio: profileForm.value.bio })
+    await userStore.fetchUserInfo()
+    ElMessage.success('资料已保存')
+  } finally { savingProfile.value = false }
+}
+
+const changePassword = async () => {
+  if (changingPassword.value) return
+  const form = passwordForm.value
+  if (form.newPassword !== form.confirmPassword) return ElMessage.warning('两次输入的密码不一致')
+  changingPassword.value = true
+  try {
+    await updatePassword({ current_password: form.currentPassword, new_password: form.newPassword })
+    passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+    ElMessage.success('密码已修改')
+  } finally { changingPassword.value = false }
+}
+
+const uploadAvatar = () => { activeTab.value = 'settings' }
+
+const doUploadAvatar = async ({ file }) => {
+  try {
+    await uploadAvatarApi(file)
+    ElMessage.success('头像上传成功')
+    await userStore.fetchUserInfo()
+  } catch {
+    /* 错误提示由 axios 拦截器统一处理 */
   }
-  if (!passwordForm.value.newPassword) {
-    ElMessage.warning('请输入新密码')
-    return
+}
+
+const deleteWork = async (work) => {
+  try {
+    await deleteWorkApi(work.id)
+    if (myWorks.value.length === 1 && pages.value.works > 1) pages.value.works--
+    await Promise.all([fetchMyWorks(), refreshStatistics()])
+    ElMessage.success('作品已删除')
+  } catch {
+    /* 错误提示由 axios 拦截器统一处理 */
   }
-  if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
-    ElMessage.error('两次输入的密码不一致')
-    return
-  }
-  ElMessage.success('密码修改成功')
-  passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
-}
-
-const uploadAvatar = () => {
-  ElMessage.info('点击上传头像')
-}
-
-const handleAvatarUpload = () => {
-  ElMessage.success('头像上传成功')
-}
-
-const handleAvatarError = () => {
-  ElMessage.error('头像上传失败')
-}
-
-const deleteWork = (work) => {
-  myWorks.value = myWorks.value.filter(w => w.id !== work.id)
-  ElMessage.success('作品已删除')
 }
 
 const viewWorkDetail = (work) => {
@@ -542,35 +374,33 @@ const viewWorkDetail = (work) => {
   showWorkDialog.value = true
 }
 
-const removeCollection = (work) => {
-  myCollections.value = myCollections.value.filter(w => w.id !== work.id)
-  ElMessage.success('已取消收藏')
+const savingProfile = ref(false)
+const changingPassword = ref(false)
+const collections = ref([])
+const orders = ref([])
+const filteredOrders = computed(() => ordersFilter.value === 'all' ? orders.value : orders.value.filter(o => o.status === ordersFilter.value))
+const aiHistory = ref([])
+const handleTabChange = async (tab) => {
+  try {
+    if (tab === 'works') return await fetchMyWorks()
+    const loaders = { collections: getCollections, orders: getOrders, 'ai-history': getAIHistory }
+    if (!loaders[tab]) return
+    const version = tabRequests[tab] = (tabRequests[tab] || 0) + 1
+    const resp = await loaders[tab]({ page: pages.value[tab], per_page: 12, status: tab === 'orders' && ordersFilter.value !== 'all' ? ordersFilter.value : undefined })
+    if (version !== tabRequests[tab]) return
+    totals.value[tab] = resp.meta?.pagination?.total || 0
+    const targets = { collections, orders, 'ai-history': aiHistory }
+    targets[tab].value = resp.data || []
+  } catch { /* API 拦截器提示 */ }
 }
-
-const viewCollectionDetail = (work) => {
-  ElMessage.info(`查看收藏: ${work.title}`)
+const changePage = async page => {
+  pages.value[activeTab.value] = page
+  await handleTabChange(activeTab.value)
 }
-
-const viewOrder = (order) => {
-  selectedOrder.value = order
-  showOrderDialog.value = true
+const doCancelOrder = async (order) => {
+  await cancelOrder(order.id)
+  await handleTabChange('orders')
 }
-
-const payOrder = (order) => {
-  order.status = '待发货'
-  ElMessage.success('付款成功')
-}
-
-const remindSeller = (order) => {
-  ElMessage.info('已提醒卖家发货')
-}
-
-const confirmReceipt = (order) => {
-  order.status = '已完成'
-  ElMessage.success('已确认收货')
-}
-
-const handleTabChange = () => {}
 </script>
 
 <style scoped>

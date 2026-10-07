@@ -556,3 +556,18 @@ body {
     padding: var(--space-4);
   }
 }
+/* Respect user motion preferences throughout the application. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .el-dialog { max-width: calc(100vw - 24px); }
+  .el-pagination { flex-wrap: wrap; gap: 8px; }
+  .el-table { max-width: 100%; }
+}

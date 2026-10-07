@@ -1,0 +1,60 @@
+{
+  "protocol": "相同23张去重后固定留出图像；CPU串行批量1推理；单种子实验",
+  "models": [
+    {
+      "name": "teacher",
+      "label": "ResNet18 双任务",
+      "accuracy": 0.8260869565217391,
+      "macro_f1": 0.685064935064935,
+      "multilabel_micro_f1": 0.4166666666666667,
+      "multilabel_macro_f1": 0.12884615384615386,
+      "parameters": 11192415,
+      "cpu_single_image_ms": 23.754319999989093,
+      "sample_count": 23
+    },
+    {
+      "name": "student",
+      "label": "小模型，无蒸馏",
+      "accuracy": 0.391304347826087,
+      "macro_f1": 0.3179271708683474,
+      "multilabel_micro_f1": 0.21428571428571427,
+      "multilabel_macro_f1": 0.059065934065934064,
+      "parameters": 167967,
+      "cpu_single_image_ms": 2.0571250000102737,
+      "sample_count": 23
+    },
+    {
+      "name": "distilled",
+      "label": "小模型，蒸馏",
+      "accuracy": 0.43478260869565216,
+      "macro_f1": 0.3084033613445378,
+      "multilabel_micro_f1": 0.055384615384615386,
+      "multilabel_macro_f1": 0.03088319088319088,
+      "parameters": 167967,
+      "cpu_single_image_ms": 1.775065000038012,
+      "sample_count": 23
+    },
+    {
+      "name": "calibrated",
+      "label": "教师，验证集阈值校准",
+      "accuracy": 0.8260869565217391,
+      "macro_f1": 0.685064935064935,
+      "multilabel_micro_f1": 0.3855421686746988,
+      "multilabel_macro_f1": 0.1294871794871795,
+      "parameters": 11192415,
+      "cpu_single_image_ms": 25.274579999995694,
+      "sample_count": 23
+    },
+    {
+      "name": "ablation",
+      "label": "ResNet18，仅一级损失",
+      "accuracy": 0.6521739130434783,
+      "macro_f1": 0.5347985347985349,
+      "multilabel_micro_f1": 0.08022922636103152,
+      "multilabel_macro_f1": 0.050109890109890115,
+      "parameters": 11192415,
+      "cpu_single_image_ms": 26.704209999979867,
+      "sample_count": 23
+    }
+  ]
+}

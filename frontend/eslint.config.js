@@ -9,7 +9,7 @@ export default defineConfig([
     files: ['**/*.{js,mjs,jsx,vue}'],
   },
 
-  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**']),
+  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**', '.browser-hunyuan*/**', '.browser-audit*/**', '.asset-review-browser*/**', '.acceptance/**']),
 
   {
     languageOptions: {
@@ -21,4 +21,5 @@ export default defineConfig([
 
   js.configs.recommended,
   ...pluginVue.configs['flat/essential'],
+  { files: ['scripts/**/*.mjs', '*.config.js'], languageOptions: { globals: globals.node } },
 ])

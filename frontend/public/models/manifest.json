@@ -1,0 +1,298 @@
+{
+  "version": 3,
+  "assets": [
+    {
+      "id": "daafu",
+      "name": "大阿福",
+      "kind": "classic",
+      "file": "daafu.glb",
+      "source": "procedural",
+      "bytes": 1615612,
+      "sha256": "bae8886d52e8262dd0605daa092c51c741951f242bfc5ee6c1ea08e7167b4957",
+      "meshes": 51,
+      "triangles": 41900,
+      "bounds": {
+        "min": [
+          -1.2999999523162842,
+          -0.329999999329448,
+          -1.2999999523162842
+        ],
+        "max": [
+          1.2999999523162842,
+          3.7500000107288365,
+          2.184595965147018
+        ]
+      },
+      "anchors": []
+    },
+    {
+      "id": "canmao",
+      "name": "蚕猫",
+      "kind": "classic",
+      "file": "canmao.glb",
+      "source": "procedural",
+      "bytes": 1210276,
+      "sha256": "5ed572b60d2b47a67f3ea9cdef8347c608d9dd55cc79766259041be97923fee6",
+      "meshes": 14,
+      "triangles": 21104,
+      "bounds": {
+        "min": [
+          -1.2999999523162842,
+          -0.8799999993294481,
+          -1.2999999523162842
+        ],
+        "max": [
+          1.2999999523162842,
+          2.301268736628586,
+          1.2999999523162842
+        ]
+      },
+      "anchors": []
+    },
+    {
+      "id": "shouxing",
+      "name": "老寿星",
+      "kind": "classic",
+      "file": "shouxing.glb",
+      "source": "procedural",
+      "bytes": 650432,
+      "sha256": "19581ebf15e4eb4284e4fb014ec378fd0c0b5e38358abcc9d7d549df54c262f3",
+      "meshes": 15,
+      "triangles": 15008,
+      "bounds": {
+        "min": [
+          -1.2999999523162842,
+          -1.079999999329448,
+          -1.2999999523162842
+        ],
+        "max": [
+          1.2999999523162842,
+          1.849999976158142,
+          1.2999999523162842
+        ]
+      },
+      "anchors": []
+    },
+    {
+      "id": "afu_head",
+      "name": "阿福头部",
+      "kind": "part",
+      "file": "parts/afu_head.glb",
+      "source": "procedural",
+      "bytes": 460452,
+      "sha256": "977105d884b194d981bd589f9213fe340b6f0e8ae986dd07b0611935add02be4",
+      "meshes": 7,
+      "triangles": 11504,
+      "bounds": {
+        "min": [
+          -1.031999997496605,
+          -0.96,
+          -1
+        ],
+        "max": [
+          1.031999997496605,
+          1.050000010728836,
+          1
+        ]
+      },
+      "anchors": [
+        {
+          "name": "bottom",
+          "position": [
+            0,
+            -0.88,
+            0
+          ],
+          "accept": [
+            "top"
+          ],
+          "used": false
+        }
+      ]
+    },
+    {
+      "id": "afu_body",
+      "name": "阿福身体",
+      "kind": "part",
+      "file": "parts/afu_body.glb",
+      "source": "procedural",
+      "bytes": 364508,
+      "sha256": "f4f3b124caf2a202dc1ff150401db39e55fabce84430f032630b1ad53c952088",
+      "meshes": 4,
+      "triangles": 7456,
+      "bounds": {
+        "min": [
+          -1.05,
+          -0.9,
+          -1.019999980926514
+        ],
+        "max": [
+          1.05,
+          1.0700000524520874,
+          1.019999980926514
+        ]
+      },
+      "anchors": [
+        {
+          "name": "top",
+          "position": [
+            0,
+            1,
+            0
+          ],
+          "accept": [
+            "bottom"
+          ],
+          "used": false
+        },
+        {
+          "name": "bottom",
+          "position": [
+            0,
+            -0.82,
+            0
+          ],
+          "accept": [
+            "top"
+          ],
+          "used": false
+        },
+        {
+          "name": "front",
+          "position": [
+            0,
+            0.28,
+            0.92
+          ],
+          "accept": [
+            "front"
+          ],
+          "used": false
+        }
+      ]
+    },
+    {
+      "id": "afu_arms",
+      "name": "环抱双臂",
+      "kind": "part",
+      "file": "parts/afu_arms.glb",
+      "source": "procedural",
+      "bytes": 442808,
+      "sha256": "1df6caa31d62eeb44d625392c31e17d7c1796c86c297b6e8740ec758d5412b95",
+      "meshes": 6,
+      "triangles": 5672,
+      "bounds": {
+        "min": [
+          -0.9178652167320251,
+          -0.35358140502466606,
+          -0.33759406208992004
+        ],
+        "max": [
+          0.9178652167320251,
+          0.5017366409301758,
+          0.8783714336156845
+        ]
+      },
+      "anchors": [
+        {
+          "name": "center",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "accept": [
+            "front"
+          ],
+          "used": false
+        },
+        {
+          "name": "front",
+          "position": [
+            0,
+            -0.22,
+            0.55
+          ],
+          "accept": [
+            "bottom"
+          ],
+          "used": false
+        }
+      ]
+    },
+    {
+      "id": "clay_base",
+      "name": "描金底座",
+      "kind": "part",
+      "file": "parts/clay_base.glb",
+      "source": "procedural",
+      "bytes": 152716,
+      "sha256": "61122e1ae868fb45f913861a94ed5835abee0c01f88933f5a0194b08fafb88df",
+      "meshes": 3,
+      "triangles": 3136,
+      "bounds": {
+        "min": [
+          -1.2999999523162842,
+          -0.329999999329448,
+          -1.2999999523162842
+        ],
+        "max": [
+          1.2999999523162842,
+          0.043871756643057126,
+          1.2999999523162842
+        ]
+      },
+      "anchors": [
+        {
+          "name": "top",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "accept": [
+            "bottom"
+          ],
+          "used": false
+        }
+      ]
+    },
+    {
+      "id": "lion_beast",
+      "name": "瑞狮",
+      "kind": "part",
+      "file": "parts/lion_beast.glb",
+      "source": "procedural",
+      "bytes": 467076,
+      "sha256": "1b53c489cffa133be4c28032c7081903ac0395c1ed7278811b595b01f5fcc110",
+      "meshes": 31,
+      "triangles": 14132,
+      "bounds": {
+        "min": [
+          -0.5039999887347222,
+          -0.5008000004291535,
+          -0.5432338715489263
+        ],
+        "max": [
+          0.5039999887347222,
+          0.7624783688861756,
+          0.7145959651470185
+        ]
+      },
+      "anchors": [
+        {
+          "name": "bottom",
+          "position": [
+            0,
+            -0.5,
+            0
+          ],
+          "accept": [
+            "top"
+          ],
+          "used": false
+        }
+      ]
+    }
+  ]
+}

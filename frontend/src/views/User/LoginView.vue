@@ -18,7 +18,7 @@
             v-model="loginForm.email"
             type="email"
             placeholder="请输入邮箱"
-            prefix-icon="User"
+            :prefix-icon="User"
             size="large"
           />
         </el-form-item>
@@ -28,7 +28,7 @@
             v-model="loginForm.password"
             type="password"
             placeholder="请输入密码"
-            prefix-icon="Lock"
+            :prefix-icon="Lock"
             size="large"
             show-password
           />
@@ -37,7 +37,7 @@
         <el-form-item>
           <div class="form-options">
             <el-checkbox v-model="loginForm.rememberMe">记住我</el-checkbox>
-            <a href="#" class="forgot-link">忘记密码？</a>
+            <router-link to="/forgot-password" class="forgot-link">忘记密码？</router-link>
           </div>
         </el-form-item>
 
@@ -60,24 +60,16 @@
         <router-link to="/register" class="register-link">立即注册</router-link>
       </div>
 
-      <div class="divider">
-        <span>其他登录方式</span>
-      </div>
-
-      <div class="social-login">
-        <el-button icon="User" type="default" size="large" circle>微信</el-button>
-        <el-button icon="User" type="default" size="large" circle>QQ</el-button>
-        <el-button icon="User" type="default" size="large" circle>微博</el-button>
-      </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { User, Lock } from '@element-plus/icons-vue'
 import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { User, Lock } from '@element-plus/icons-vue'
+
 import { useUserStore } from '@/store/userStore'
 
 const loginFormRef = ref(null)
@@ -109,7 +101,7 @@ const handleLogin = async () => {
 
   try {
     await loginFormRef.value.validate()
-  } catch (error) {
+  } catch {
     return
   }
 

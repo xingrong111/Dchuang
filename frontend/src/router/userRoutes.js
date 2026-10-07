@@ -1,4 +1,6 @@
 export default [
+  ...['help', 'terms', 'privacy'].map(name => ({ path: '/' + name, name,
+    component: () => import('@/views/User/InformationView.vue') })),
   {
     path: '/login',
     name: 'login',
@@ -8,6 +10,11 @@ export default [
     path: '/register',
     name: 'register',
     component: () => import('@/views/User/RegisterView.vue')
+  },
+  {
+    path: '/forgot-password',
+    name: 'forgot-password',
+    component: () => import('@/views/User/ForgotPasswordView.vue')
   },
   {
     path: '/about',

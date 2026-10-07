@@ -1,0 +1,829 @@
+{
+  "source": "https://3d.hunyuan.tencent.com/",
+  "assets": [
+    {
+      "id": "head-sage",
+      "name": "寿星长眉",
+      "file": "head-sage.glb",
+      "prompt": "独立的惠山泥人寿星头部，硕大圆润额头，慈祥笑脸，白色长眉和长胡须，后脑完整，底部平整颈口，无身体，精致手绘陶土纹理，写实文创摆件，朱砂和米白色，单件居中。",
+      "bounds": {
+        "min": [
+          -0.41971535375883035,
+          0,
+          -0.2976983845250098
+        ],
+        "max": [
+          0.41971535375883035,
+          1,
+          0.2976983845250098
+        ]
+      },
+      "creationId": "a3d52421-c442-4fd5-84e6-f10c3cc6affb",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 4250884,
+      "sha256": "7a12c8c53a19f9449838d4beff97dda683ca4f5e6ab28e6da3cdb115b712c5a1",
+      "originalSha256": "d9f891107037c07608137f6f84909267b6118b6e29407833169c2a1d576a6770",
+      "originalFile": "head-sage.glb",
+      "meshes": 1,
+      "triangles": 50000,
+      "generatedAt": "2026-10-05T06:45:44.252Z",
+      "assetId": "b39453e3-d248-4a85-98ec-e5e192ad1649",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "head-opera",
+      "name": "点翠旦角",
+      "file": "head-opera.glb",
+      "prompt": "独立的中国戏曲旦角头部部件，精致少女脸，黑色盘发，蓝色点翠凤冠，珍珠流苏，后脑完整，平整颈口，无身体，手绘陶土彩绘，精致文创摆件，完整单件。",
+      "bounds": {
+        "min": [
+          -0.27051085891028026,
+          0,
+          -0.341246616713069
+        ],
+        "max": [
+          0.27051085891028026,
+          1,
+          0.341246616713069
+        ]
+      },
+      "creationId": "9f202598-8c61-439f-ba92-eea66574353e",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 4988656,
+      "sha256": "4eadf5cc58d487ad7f6a2f277977b0eae840f40e887fc3b35167ac833589aafb",
+      "originalSha256": "9eb894dac305a7a3ac62c534d7cdddbc84bfa3a957178cdb1040596f9c38be11",
+      "originalFile": "head-opera.glb",
+      "meshes": 1,
+      "triangles": 50000,
+      "generatedAt": "2026-10-05T06:45:45.692Z",
+      "assetId": "c62f29b7-1f1c-4206-91ef-68bedd378026",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "head-fox",
+      "name": "灵狐尖耳",
+      "file": "head-fox.glb",
+      "prompt": "独立的狐狸角色头部，尖耳朵，修长吻部，蓬松橙色毛发和白色脸颊，明亮眼睛，后脑完整，平整颈口，无身体，写实精致手绘树脂文创风格，单件。",
+      "bounds": {
+        "min": [
+          -0.34423681212038376,
+          0,
+          -0.27804717178880944
+        ],
+        "max": [
+          0.34423681212038376,
+          1,
+          0.27804717178880944
+        ]
+      },
+      "creationId": "ec314949-cbbd-40c8-b8f8-36511c96ed8e",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 4514184,
+      "sha256": "cab6c2cf2b7c4fab22e7a7df3f2cd3b024dd19b7d1d9c640557b093a7ea08986",
+      "originalSha256": "7347b91f6f706750680a0de1167656e922d38e8d24b51a2d2dbd47c44fb08c83",
+      "originalFile": "head-fox.glb",
+      "meshes": 1,
+      "triangles": 50000,
+      "generatedAt": "2026-10-05T06:45:47.056Z",
+      "assetId": "3ab2394f-e9ca-4e0e-8d8b-2bd25db517b2",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "body-robe",
+      "name": "盘坐花袍",
+      "file": "body-robe.glb",
+      "prompt": "独立盘腿坐姿的泥人身体部件，红色宽大圆润花袍，祥云刺绣，圆形领口，平整颈口，无头无手臂，胸前完整封闭，高品质手工彩绘文创，腾讯混元写实雕塑风格，精细PBR材质，单件居中，无文字。",
+      "bounds": {
+        "min": [
+          -0.4476928516306538,
+          0,
+          -0.31749856331552256
+        ],
+        "max": [
+          0.4476928516306538,
+          0.9999999999999999,
+          0.31749856331552256
+        ]
+      },
+      "creationId": "db27a0f1-e466-4439-bab9-99b8e34057a4",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 4014088,
+      "sha256": "06e4c88ae742296308197dd89a2644828d1cc49b4b064bf0ff4531bc80591af5",
+      "originalSha256": "6e5c0ff7172c516836b0d1c892b1ed784d5fd724bc2088784b22d59e6e07175a",
+      "originalFile": "body-robe.glb",
+      "meshes": 1,
+      "triangles": 50004,
+      "generatedAt": "2026-10-05T06:29:24.429Z",
+      "assetId": "dfe0b1a6-3b1b-4e5d-8524-d48576531a1b",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "body-opera",
+      "name": "戏曲水袖衣身",
+      "file": "body-opera.glb",
+      "prompt": "独立中国戏曲青衣身体部件，修长站姿，蓝白长裙，金色腰带，精致花纹，平整颈口，无头无手臂，胸前完整封闭，高品质手工彩绘文创，腾讯混元写实雕塑风格，精细PBR材质，单件居中，无文字。",
+      "bounds": {
+        "min": [
+          -0.32972693110217305,
+          0,
+          -0.11532992479886216
+        ],
+        "max": [
+          0.32972693110217305,
+          1,
+          0.11532992479886216
+        ]
+      },
+      "creationId": "383c146d-c6de-40f8-9c04-7a2fc4e1cb1a",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 3981552,
+      "sha256": "9a223ba9db42d50063def76e653ea310e06fece2cffdab061ae3e790d91b75a2",
+      "originalSha256": "a26f2ae83471ce83582c54872667f52b7b194554943972565ec118236ccaf69b",
+      "originalFile": "body-opera.glb",
+      "meshes": 1,
+      "triangles": 49994,
+      "generatedAt": "2026-10-05T06:29:25.879Z",
+      "assetId": "ea0053e6-72e9-41c5-91da-389b615e90dc",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "body-armor",
+      "name": "将军铠甲衣身",
+      "file": "body-armor.glb",
+      "prompt": "独立古代将军身体部件，厚实方肩轮廓，红金层叠胸甲和腰甲，短裙甲，平整颈口，无头无手臂，胸前完整封闭，高品质手工彩绘文创，腾讯混元写实雕塑风格，精细PBR材质，单件居中，无文字。",
+      "bounds": {
+        "min": [
+          -0.4195351940517558,
+          0,
+          -0.20892497704065363
+        ],
+        "max": [
+          0.4195351940517558,
+          1,
+          0.20892497704065363
+        ]
+      },
+      "creationId": "400711d7-1e63-4ffc-9bf1-f210bc91293b",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 5042720,
+      "sha256": "acc67cb5ba96e2bac681d9703e2192bb0d9c54572fc35b2b27f30a0129605ec5",
+      "originalSha256": "f10628e29103914b214db6c21e9c62debeb33a7b1fa153d5f18c7752c5146083",
+      "originalFile": "body-armor.glb",
+      "meshes": 1,
+      "triangles": 49976,
+      "generatedAt": "2026-10-05T06:29:27.279Z",
+      "assetId": "ebc10e91-3086-4a00-a899-0f86b9e71b86",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "body-jacket",
+      "name": "童趣短褂衣身",
+      "file": "body-jacket.glb",
+      "prompt": "独立小孩身体部件，站姿短褂，绿色盘扣夹袄，蓝色宽裤，小靴子，圆润比例，平整颈口，无头无手臂，胸前完整封闭，高品质手工彩绘文创，腾讯混元写实雕塑风格，精细PBR材质，单件居中，无文字。",
+      "bounds": {
+        "min": [
+          -0.22593306747109512,
+          0,
+          -0.13954287499820053
+        ],
+        "max": [
+          0.22593306747109512,
+          1,
+          0.13954287499820053
+        ]
+      },
+      "creationId": "df86419e-b77d-4f2b-bd5c-5846be4fda2d",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 3994220,
+      "sha256": "b7cda243816d5eef31630475ce4dd30846d836a87ed198ce0bbda5b875984026",
+      "originalSha256": "44417395ce453abe06ede22fa5dd9859670ae5503c921e92b76d934cac4a7e3d",
+      "originalFile": "body-jacket.glb",
+      "meshes": 1,
+      "triangles": 49988,
+      "generatedAt": "2026-10-05T06:29:28.767Z",
+      "assetId": "d82d18e9-27a9-4780-8ab8-2c25d716f042",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "arms-hug",
+      "name": "拱手宽袖",
+      "file": "arms-hug.glb",
+      "prompt": "独立的一对泥人手臂部件，红色宽袍袖，金色袖口，双臂弯曲拱手作揖，手掌细节完整，仅双臂，不要头和身体，高品质手工彩绘文创，腾讯混元写实雕塑风格，精细PBR材质，单件居中，无文字。",
+      "bounds": {
+        "min": [
+          -0.7789249155152523,
+          0,
+          -0.374541357581072
+        ],
+        "max": [
+          0.7789249155152523,
+          1,
+          0.374541357581072
+        ]
+      },
+      "creationId": "d23857d1-83dd-45e7-9c5a-052cb2ca49d3",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 3463812,
+      "sha256": "0fa219fbda3cd1d33e7103559de2c7b1d724cd12388ac35280c913959beb38d5",
+      "originalSha256": "0cbc114aa956208fa2903ffa9d4370ecd6a6b843111c7a40bad562000042adf0",
+      "originalFile": "arms-hug.glb",
+      "meshes": 1,
+      "triangles": 50000,
+      "generatedAt": "2026-10-05T06:29:30.332Z",
+      "assetId": "34e9b13b-169d-461f-b565-12aa71352c3c",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "arms-open",
+      "name": "迎宾展开袖",
+      "file": "arms-open.glb",
+      "prompt": "独立的一对泥人手臂部件，蓝色宽大水袖，白色内袖，双臂向左右展开，完整精致手掌，仅双臂，不要头和身体，高品质手工彩绘文创，腾讯混元写实雕塑风格，精细PBR材质，单件居中，无文字。",
+      "bounds": {
+        "min": [
+          -0.7759239127443975,
+          0,
+          -0.2919582610996592
+        ],
+        "max": [
+          0.7759239127443975,
+          1,
+          0.2919582610996592
+        ]
+      },
+      "creationId": "b4fed98b-fefe-4012-902a-1e4448f621c6",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 3793188,
+      "sha256": "f5ed13c3f708789f4098c5364ce6dda3390e9477b5f999b2c81ea960cbbd758e",
+      "originalSha256": "a41bf3df030be073080bad93c70a632874c0c3a89699df3fb63c0452aeb4ce59",
+      "originalFile": "arms-open.glb",
+      "meshes": 1,
+      "triangles": 50000,
+      "generatedAt": "2026-10-05T06:29:31.897Z",
+      "assetId": "5513290a-c462-44ca-b304-aee79d961ce9",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "arms-lift",
+      "name": "举福窄袖",
+      "file": "arms-lift.glb",
+      "prompt": "独立的一对泥人手臂部件，绿色短袖，金色绣边，一只手举高另一只手弯腰，完整手掌，仅双臂，不要头和身体，高品质手工彩绘文创，腾讯混元写实雕塑风格，精细PBR材质，单件居中，无文字。",
+      "bounds": {
+        "min": [
+          -0.479739167005721,
+          0,
+          -0.31364191552549037
+        ],
+        "max": [
+          0.479739167005721,
+          1,
+          0.31364191552549037
+        ]
+      },
+      "creationId": "cbeef0dd-7889-4afb-bc64-e9bf0bca6cff",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 4607416,
+      "sha256": "84dadcbaddb5132b9c7570837096bc95506c5138b0f20b572f8e80ca2e4d85b0",
+      "originalSha256": "ace9baa445a11bb44a8123eb7cb1636bf125fba2a93827b4ebfa6e6b9484aea8",
+      "originalFile": "arms-lift.glb",
+      "meshes": 1,
+      "triangles": 50000,
+      "generatedAt": "2026-10-05T06:29:33.507Z",
+      "assetId": "0e06ffae-7b2f-49a5-b09d-27a205ce78fa",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "arms-armor",
+      "name": "护腕铠甲臂",
+      "file": "arms-armor.glb",
+      "prompt": "独立的一对古代将军手臂部件，黑金护腕，红色袖子，层叠金属肩甲，双臂向前弯曲，完整手掌，仅双臂，不要身体和头，高品质手工彩绘文创，腾讯混元写实雕塑风格，精细PBR材质，单件居中，无文字。",
+      "bounds": {
+        "min": [
+          -0.7026764993053481,
+          0,
+          -0.5847907665291157
+        ],
+        "max": [
+          0.7026764993053481,
+          1,
+          0.5847907665291157
+        ]
+      },
+      "creationId": "4b7e8c27-b199-415d-838a-1edff1caf123",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 4693860,
+      "sha256": "a58a8b074b63aaeef8caf00226057b17d1301708011f0015a2e962a775a8b88b",
+      "originalSha256": "44894b26522000680382ab897a1a66eeca84444c56b9c136d3f2e4cc6a569e69",
+      "originalFile": "arms-armor.glb",
+      "meshes": 1,
+      "triangles": 49974,
+      "generatedAt": "2026-10-05T06:29:35.033Z",
+      "assetId": "4cf3b9cb-f4bb-4c7b-ba1a-f89312885497",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "base-lotus",
+      "name": "莲瓣台座",
+      "file": "base-lotus.glb",
+      "prompt": "独立莲花形文创摆件底座，层叠盛开莲瓣，淡粉与青瓷釉面，顶部平整承托圆台，精致雕刻纹理，完整单件，高品质手工彩绘文创，腾讯混元写实雕塑风格，精细PBR材质，单件居中，无文字。",
+      "bounds": {
+        "min": [
+          -0.8000776584056843,
+          0,
+          -0.7986874738959223
+        ],
+        "max": [
+          0.8000776584056843,
+          0.9999999999999999,
+          0.7986874738959223
+        ]
+      },
+      "creationId": "7c6a6ea2-4a2d-4b5c-81d8-57aadc156a12",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 3183644,
+      "sha256": "b088d2d60b7e4a2a6c2cba98febecd4fc0bb5adb67812d3a4193187e14b258c4",
+      "originalSha256": "411529b71f0dca96b0e86525454cc1a5431b2e86ceaa471e38170bef71e2a47a",
+      "originalFile": "base-lotus.glb",
+      "meshes": 1,
+      "triangles": 50002,
+      "generatedAt": "2026-10-05T06:29:36.352Z",
+      "assetId": "c27a17bd-a7fd-47ab-8a6d-66442c4d2537",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "base-cloud",
+      "name": "祥云台座",
+      "file": "base-cloud.glb",
+      "prompt": "独立祥云形文创摆件底座，乳白色陶瓷卷云雕刻，青金描边，云纹起伏轮廓，顶部平整承托台，完整单件，高品质手工彩绘文创，腾讯混元写实雕塑风格，精细PBR材质，单件居中，无文字。",
+      "bounds": {
+        "min": [
+          -0.49508700879740764,
+          0,
+          -0.49955190332407656
+        ],
+        "max": [
+          0.49508700879740764,
+          1,
+          0.49955190332407656
+        ]
+      },
+      "creationId": "b17e3b7d-a077-4278-8ab1-889134cdbb4b",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 3532552,
+      "sha256": "15fb72b37c1bba24f71d28b393a474a1be06e02ad7a9046c1e0e30a81fe571e6",
+      "originalSha256": "342806acccda2cef95e6f32e9f432d8aac179c09643497ffcdfa1a26d4dd9580",
+      "originalFile": "base-cloud.glb",
+      "meshes": 1,
+      "triangles": 50046,
+      "generatedAt": "2026-10-05T06:29:37.586Z",
+      "assetId": "75b83632-22c2-4c0c-9160-b862db8a35b0",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "base-rock",
+      "name": "太湖石台座",
+      "file": "base-rock.glb",
+      "prompt": "独立太湖石风格文创底座，灰青色岩石孔洞，精细石纹，宽稳底部，顶部平整小承托面，完整单件，高品质手工彩绘文创，腾讯混元写实雕塑风格，精细PBR材质，单件居中，无文字。",
+      "bounds": {
+        "min": [
+          -0.30055308111051476,
+          0,
+          -0.2795275233019818
+        ],
+        "max": [
+          0.30055308111051476,
+          1,
+          0.2795275233019818
+        ]
+      },
+      "creationId": "c92b0fd3-ada7-4923-b7d0-9b519461399c",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 4058392,
+      "sha256": "7c5afb65590108f989f57badba6e032254e4b4c937be69101e9d0072940979dc",
+      "originalSha256": "4f2671885ff69bb4bb9b89b7a8f9448fc99fa1c8711fa9c7907326810226d4b8",
+      "originalFile": "base-rock.glb",
+      "meshes": 1,
+      "triangles": 50000,
+      "generatedAt": "2026-10-05T06:29:39.135Z",
+      "assetId": "c52b8fd7-8df2-486c-82e7-098a4fcf3a77",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "base-wood",
+      "name": "雕花木台",
+      "file": "base-wood.glb",
+      "prompt": "独立中式雕花木底座，深胡桃木色，四个弯曲矮足，八角形顶部，莲花浮雕和铜色镶边，完整单件，高品质手工彩绘文创，腾讯混元写实雕塑风格，精细PBR材质，单件居中，无文字。",
+      "bounds": {
+        "min": [
+          -0.5544512728193557,
+          0,
+          -0.6262657746829118
+        ],
+        "max": [
+          0.5544512728193557,
+          1,
+          0.6262657746829118
+        ]
+      },
+      "creationId": "1acb03cc-258d-4d98-8437-2eaddbe28912",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 5029616,
+      "sha256": "4956a16ec9fe72e62f937ea3e7f1d806e42af1a310836c7a52962028e9fdd056",
+      "originalSha256": "a81003dc94f306592bdcf6da8d87354fc6bc6f79e1bee551eaaf1f55e492d33f",
+      "originalFile": "base-wood.glb",
+      "meshes": 1,
+      "triangles": 49998,
+      "generatedAt": "2026-10-05T06:29:40.611Z",
+      "assetId": "20ad8d01-dd47-46ae-8859-30432b53c97d",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "accessory-umbrella",
+      "name": "油纸伞",
+      "file": "accessory-umbrella.glb",
+      "prompt": "独立撑开的中式油纸伞，朱红伞面，手绘梅花，清晰木竹伞骨，弯曲木把，精致可持握文创配件，完整单件，高品质手工彩绘文创，腾讯混元写实雕塑风格，精细PBR材质，单件居中，无文字。",
+      "bounds": {
+        "min": [
+          -0.5376540435158311,
+          0,
+          -0.5181495976291213
+        ],
+        "max": [
+          0.5376540435158311,
+          1,
+          0.5181495976291213
+        ]
+      },
+      "creationId": "eda76c0e-84bd-45ce-b706-5ae82ea7d613",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 4676444,
+      "sha256": "e24912233a1b78d428d7d1813c5b138ce540ca98c558d3b9a4ce3925b1b2b0e7",
+      "originalSha256": "6d61bd24235bfae3d11728cacece573c404428d161b9894a0c9fac0c9a9fe44e",
+      "originalFile": "accessory-umbrella.glb",
+      "meshes": 1,
+      "triangles": 49952,
+      "generatedAt": "2026-10-05T06:29:42.070Z",
+      "assetId": "d1797155-8244-4f84-a45d-74576a49fbad",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "accessory-ruyi",
+      "name": "玉如意",
+      "file": "accessory-ruyi.glb",
+      "prompt": "独立传统玉如意，青白玉质感，灵芝形如意头，修长弯曲手柄，金色镶边，红色流苏，精致文创配件，完整单件，高品质手工彩绘文创，腾讯混元写实雕塑风格，精细PBR材质，单件居中，无文字。",
+      "bounds": {
+        "min": [
+          -0.8041856181864558,
+          0,
+          -0.2619729950716017
+        ],
+        "max": [
+          0.8041856181864558,
+          1,
+          0.2619729950716017
+        ]
+      },
+      "creationId": "6eb3b8fa-067b-4c5b-8d41-54ac1174964b",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 3982080,
+      "sha256": "4e981bc89b204840927b74d0bbc74cbac6fb489f780f951dda521389015c5657",
+      "originalSha256": "12dafc311eab0222a418b90051e8cddcef1438acd8c3faccb0de2de6362d3c1b",
+      "originalFile": "accessory-ruyi.glb",
+      "meshes": 1,
+      "triangles": 50000,
+      "generatedAt": "2026-10-05T06:29:43.510Z",
+      "assetId": "53645eb7-ea15-4c3f-9288-d97e929a2cfc",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "pet-dog",
+      "name": "福犬",
+      "file": "pet-dog.glb",
+      "prompt": "完整独立趴卧小柴犬文创雕塑，尖耳朵，卷尾巴，橙白毛色，红色铃铛项圈，灵动眼睛，四爪完整，不要人物和底座，高品质手工彩绘文创，腾讯混元写实雕塑风格，精细PBR材质，单件居中，无文字。",
+      "bounds": {
+        "min": [
+          -0.6122148214674608,
+          0,
+          -0.3641369954770133
+        ],
+        "max": [
+          0.6122148214674608,
+          1,
+          0.3641369954770133
+        ]
+      },
+      "creationId": "0fb49b3a-a2df-4e9f-8a0e-84cf5bd7dc5a",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 3974496,
+      "sha256": "765476376d276e41e82acc7ee71683736f3d03976e3c0be4b587d088b82b4bfd",
+      "originalSha256": "0951742ed191fd2565851a75659e8f27fa765fa10f745c6c0e988c88c6c9d9a0",
+      "originalFile": "pet-dog.glb",
+      "meshes": 1,
+      "triangles": 50122,
+      "generatedAt": "2026-10-05T06:29:45.030Z",
+      "assetId": "3f6f621f-17e1-4ce0-b4a8-5470310167f7",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "pet-rabbit",
+      "name": "玉兔",
+      "file": "pet-rabbit.glb",
+      "prompt": "完整独立坐姿玉兔文创雕塑，长耳朵，雪白柔和皮毛，淡粉鼻子，怀抱桂花枝，后腿圆润，完整单件，不要人物和底座，高品质手工彩绘文创，腾讯混元写实雕塑风格，精细PBR材质，单件居中，无文字。",
+      "bounds": {
+        "min": [
+          -0.31420208180661774,
+          0,
+          -0.29647859582398295
+        ],
+        "max": [
+          0.31420208180661774,
+          1,
+          0.29647859582398295
+        ]
+      },
+      "creationId": "18b68450-1709-4245-b9a9-93dadbcb6e9f",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 3993116,
+      "sha256": "b7be71354266c45e17a68e51de1b3ef6f1777db585ae71ffaedc1aecbf804059",
+      "originalSha256": "4132e651d88bd32a3922d9cf2bc16266c4df6b1ecc258ce48a575a693c7f6284",
+      "originalFile": "pet-rabbit.glb",
+      "meshes": 1,
+      "triangles": 50004,
+      "generatedAt": "2026-10-05T06:29:46.549Z",
+      "assetId": "3a4615ed-8fa2-4e88-9c5c-e12b97d75a52",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "pet-lion",
+      "name": "瑞狮",
+      "file": "pet-lion.glb",
+      "prompt": "完整独立坐姿中国小瑞狮文创雕塑，卷曲狮鬃，立体圆眼，金色陶土彩绘，红色绣球，四爪和尾部完整，不要人物和底座，高品质手工彩绘文创，腾讯混元写实雕塑风格，精细PBR材质，单件居中，无文字。",
+      "bounds": {
+        "min": [
+          -0.41793251783995955,
+          0,
+          -0.38192575269611667
+        ],
+        "max": [
+          0.41793251783995955,
+          1,
+          0.38192575269611667
+        ]
+      },
+      "creationId": "9659a443-0dab-470f-84b2-520267f18723",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 4717700,
+      "sha256": "704d1129582d7b64478fe55ebb4d85646e289febb49a455c036552efa22b0012",
+      "originalSha256": "3f812f2fe320df6538856194e2ea3edf6ef9979f4f5456927ce6135a7728dde9",
+      "originalFile": "pet-lion.glb",
+      "meshes": 1,
+      "triangles": 50004,
+      "generatedAt": "2026-10-05T06:29:48.201Z",
+      "assetId": "cf5b77a4-ffcc-466e-9840-94cb5dc82d89",
+      "modelType": "text2ModelV3.1"
+    },
+    {
+      "id": "head-child-smile",
+      "name": "笑眼小孩",
+      "prompt": "独立6岁小男孩头部，完整后脑和短颈，无肩无身体。自然黑色短发，可爱圆脸，睁开圆圆大眼睛，深棕眼珠，双眼皮，微笑露出少量牙齿，柔和圆润鼻子，健康肤色。正常儿童五官比例，精致彩绘树脂文创雕塑，正面，左右对称，PBR材质，无文字。",
+      "creationId": "0a927d3e-16f8-43b8-943a-99e434a40ef1",
+      "submitted": true,
+      "assetId": "d4166859-325a-460f-9526-55a8d6c509c2",
+      "modelType": "text2ModelV3.1",
+      "originalFile": "head-child-smile.glb",
+      "downloaded": true,
+      "candidate": 0,
+      "file": "head-child-smile.glb",
+      "bounds": {
+        "min": [
+          -0.3463371147575149,
+          0,
+          -0.3629908113644041
+        ],
+        "max": [
+          0.3463371147575149,
+          1,
+          0.3629908113644041
+        ]
+      },
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 4671184,
+      "sha256": "54e2d7a71b21cf78acbf396c04ccffe52b01ea5252975fcfe6dd227898d483c6",
+      "originalSha256": "b58b1968ecd8a52656f72c33de3e5fcd14598943297833406b91a7de2f4e322d",
+      "meshes": 1,
+      "triangles": 50000,
+      "generatedAt": "2026-10-06T13:31:42.393Z"
+    },
+    {
+      "id": "head-man-sunny",
+      "name": "阳光男子",
+      "prompt": "独立25岁中国男子头部，完整后脑和短颈，无肩无身体。浓密黑色短发，清爽侧分，双眼皮丹凤眼，睁眼有神，深棕眼珠，自然浓眉，鼻梁挺直，轮廓清晰，阳光帅气的温暖微笑，健康肤色，无胡须。正常人物比例，精致彩绘树脂文创雕塑，正面，PBR材质，无文字。",
+      "creationId": "d85015d6-1eb4-4161-bfda-fb8c11aa68ff",
+      "submitted": true,
+      "assetId": "e68e9291-2c55-47d6-8b8a-7e58b6c18760",
+      "modelType": "text2ModelV3.1",
+      "originalFile": "head-man-sunny.glb",
+      "downloaded": true,
+      "candidate": 0,
+      "file": "head-man-sunny.glb",
+      "bounds": {
+        "min": [
+          -0.44099838615181497,
+          0,
+          -0.35333104026067746
+        ],
+        "max": [
+          0.44099838615181497,
+          1,
+          0.35333104026067746
+        ]
+      },
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 5032576,
+      "sha256": "ff44111eea131b52190ec506d858ee038c790d6ba72fdccd2f3cf7d810f747b9",
+      "originalSha256": "d441197efab988217d262dad72194bcf2824718dece11d5b542a8a70fdbee913",
+      "meshes": 1,
+      "triangles": 50000,
+      "generatedAt": "2026-10-06T13:31:44.860Z"
+    },
+    {
+      "id": "wuxi-afu-lotus",
+      "name": "莲生福意 · 阿福摆件",
+      "file": "wuxi-afu-lotus.glb",
+      "prompt": "无锡惠山泥人主题完整阿福摆件，可爱圆脸微笑童子，穿朱红团花衣袍，盘腿坐在小莲花台上，双手怀抱小瑞兽。头身一体自然衔接，完整双臂双手双腿，传统彩塑风格，青绿金色纹样，精致彩绘树脂质感，正面展示，PBR材质，无文字。",
+      "bounds": {
+        "min": [
+          -0.3037978972793509,
+          0,
+          -0.3280357626021644
+        ],
+        "max": [
+          0.3037978972793509,
+          1,
+          0.3280357626021644
+        ]
+      },
+      "creationId": "ac64261d-006a-409a-81c1-d5143ae9a75b",
+      "source": "tencent-hunyuan-3.1",
+      "originalFile": "wuxi-afu-lotus.glb",
+      "modelType": "text2ModelV3.1",
+      "bytes": 5394628,
+      "sha256": "927d2f215724458a6816e908fba062465d3994dd40129543ceeeae74a00916b1",
+      "originalSha256": "096e885e2439b2021178f2f9f53f35899b55a124f9b7550190fd04e0b3baa54c",
+      "meshes": 1,
+      "triangles": 50000,
+      "generatedAt": "2026-10-07T02:27:34.185Z",
+      "assetId": "f555cf0a-17eb-413d-9545-b6d890cbcd16",
+      "candidate": 0
+    },
+    {
+      "id": "wuxi-afu-pair",
+      "name": "双福临门 · 惠山童子",
+      "file": "wuxi-afu-pair.glb",
+      "prompt": "无锡惠山泥人主题双童子摆件，一男一女两个圆脸微笑孩童并肩站立，各自有完整头部身体双臂双手双腿双脚。男童红色团花短褂女童青绿花衣，各捧一朵莲花，共用小圆台。传统彩塑造型，温暖可爱，精细彩绘树脂质感，正面，PBR，无文字。",
+      "bounds": {
+        "min": [
+          -0.4599147964287629,
+          0,
+          -0.23970080142659383
+        ],
+        "max": [
+          0.4599147964287629,
+          0.9999999999999999,
+          0.23970080142659383
+        ]
+      },
+      "creationId": "73f655c7-e5e1-43d2-bc74-9ab287b07d71",
+      "source": "tencent-hunyuan-3.1",
+      "originalFile": "wuxi-afu-pair.glb",
+      "modelType": "text2ModelV3.1",
+      "bytes": 5966308,
+      "sha256": "91e552a8eb342d89ab8df8b851c7cb76f57d56bfc1dae0820dc14705ddaa0f7c",
+      "originalSha256": "bf29c333118c7e6add9dc34cb9b95f318b6b12223a437d769e7009cda3bca35c",
+      "meshes": 1,
+      "triangles": 50000,
+      "generatedAt": "2026-10-07T02:27:36.630Z",
+      "assetId": "4d5c0f9f-7ed5-48ea-8de9-03fbdbb02869",
+      "candidate": 0
+    },
+    {
+      "id": "wuxi-canmao",
+      "name": "蚕猫守福 · 彩塑猫摆件",
+      "file": "wuxi-canmao.glb",
+      "prompt": "无锡惠山泥人蚕猫题材完整猫形摆件，圆润坐姿，完整身体四肢尾巴，双耳竖起，杏仁眼，憨态可爱。奶白底色，朱红青绿花纹与金色小花点彩，胸前小铃铛，脚下薄木质圆台。传统民间彩塑结合精致文创，细腻彩绘树脂质感，正面，PBR，无文字。",
+      "bounds": {
+        "min": [
+          -0.46207981118256736,
+          0,
+          -0.4308535080037301
+        ],
+        "max": [
+          0.46207981118256736,
+          1,
+          0.4308535080037301
+        ]
+      },
+      "creationId": "73d944a4-24d2-46fd-8a14-bf00abd1704d",
+      "source": "tencent-hunyuan-3.1",
+      "originalFile": "wuxi-canmao.glb",
+      "modelType": "text2ModelV3.1",
+      "bytes": 5845596,
+      "sha256": "65b512a11dc88e7bea71cbbb9232bb6d67d9dd6eb3e2477e6b0c10d877dcb804",
+      "originalSha256": "1877500b40063e2913f4aa207128b35585344fc5a67ab26a63e0b74c23ea59f4",
+      "meshes": 1,
+      "triangles": 50000,
+      "generatedAt": "2026-10-07T02:27:39.175Z",
+      "assetId": "c06f60e3-a94a-40d3-bf25-179d2bf35c21",
+      "candidate": 0
+    },
+    {
+      "id": "wuxi-opera-lady",
+      "name": "曲韵青衣 · 戏文人物",
+      "file": "wuxi-opera-lady.glb",
+      "prompt": "无锡惠山手捏戏文主题完整青衣人物摆件，端庄微笑中国女子，黑色发髻精致头饰，青蓝戏服金色云纹，双臂完整，双手一前一侧持水袖，长裙下露出双脚，头身比例自然，稳立小圆台。精细传统彩塑，彩绘树脂质感，正面，PBR，无文字。",
+      "bounds": {
+        "min": [
+          -0.34369737627675884,
+          0,
+          -0.24654350815445172
+        ],
+        "max": [
+          0.34369737627675884,
+          1,
+          0.24654350815445172
+        ]
+      },
+      "creationId": "b64416a6-787d-453d-bd72-41e20519f23f",
+      "source": "tencent-hunyuan-3.1",
+      "originalFile": "wuxi-opera-lady.glb",
+      "modelType": "text2ModelV3.1",
+      "bytes": 5413396,
+      "sha256": "e9473db8fe0c34f5d1731aa7bd6ad8000a9bcec15b43cf559a51ffad07d80568",
+      "originalSha256": "80db9f10edbba8cb9b837b0fe7e4a353be05821ed8c8b8793223e4456a57ef21",
+      "meshes": 1,
+      "triangles": 50000,
+      "generatedAt": "2026-10-07T02:27:41.581Z",
+      "assetId": "97227de0-d35c-4235-803b-12576a01e556",
+      "candidate": 0
+    },
+    {
+      "id": "wuxi-shouxing",
+      "name": "福寿绵长 · 寿星摆件",
+      "file": "wuxi-shouxing.glb",
+      "prompt": "无锡惠山泥人寿星题材完整老人摆件，慈祥微笑，长眉白须，高额头，穿暖红青绿长袍，完整双臂双手双腿双脚，一手捧寿桃一手拄拐杖，稳立薄圆台。身体头部一体自然衔接，传统民间彩塑，细腻彩绘树脂质感，正面，PBR，无文字。",
+      "bounds": {
+        "min": [
+          -0.26240421016156285,
+          0,
+          -0.2621998706679218
+        ],
+        "max": [
+          0.26240421016156285,
+          1,
+          0.2621998706679218
+        ]
+      },
+      "creationId": "a62cb8e1-20a1-4177-82d5-1d0af8c29690",
+      "source": "tencent-hunyuan-3.1",
+      "originalFile": "wuxi-shouxing.glb",
+      "modelType": "text2ModelV3.1",
+      "bytes": 5496744,
+      "sha256": "7b8df0d0854a277774062802595aaebdb15fd4e53d26d07b2ae4f42de0545ffc",
+      "originalSha256": "e19aed46767d79748ed7b13fd46a6e34b2e38e04f6dfa1c83ffbc14289632c45",
+      "meshes": 1,
+      "triangles": 50000,
+      "generatedAt": "2026-10-07T02:27:44.071Z",
+      "assetId": "e84c48df-0411-49c9-8801-4c90195e413e",
+      "candidate": 0
+    },
+    {
+      "id": "body-scholar",
+      "name": "江南长衫",
+      "file": "body-scholar.glb",
+      "prompt": "独立完整中国男子长衫身体部件，无头部无脸，仅有短颈接口。浅米色青绿镶边江南传统长衫，完整双臂，左右双手自然垂在身侧，完整双腿双脚可见，穿黑色布鞋，自然站姿，正常成年男子身体比例。精致文创树脂雕塑，细腻衣纹，正面，PBR，无文字。",
+      "bounds": {
+        "min": [
+          -0.1985440006580016,
+          0,
+          -0.10017206347096728
+        ],
+        "max": [
+          0.1985440006580016,
+          1,
+          0.10017206347096728
+        ]
+      },
+      "creationId": "b4c425ee-561b-4053-9c82-f92b267dd287",
+      "source": "tencent-hunyuan-3.1",
+      "originalFile": "body-scholar.glb",
+      "modelType": "text2ModelV3.1",
+      "bytes": 5366128,
+      "sha256": "6081645e517b945c1de637326e3c6559447ab936d0b20d9d9b06abf8fce83dd0",
+      "originalSha256": "ee332f9de89baf126f79774ad025f7e18b664ddeee8f237d24228f70dbbbb94d",
+      "meshes": 1,
+      "triangles": 50000,
+      "generatedAt": "2026-10-07T02:27:46.496Z",
+      "assetId": "1f98fad2-85b2-4428-8427-acab84eba6ac",
+      "candidate": 0
+    }
+  ]
+}

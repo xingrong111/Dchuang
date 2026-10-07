@@ -1,0 +1,15 @@
+[Unit]
+Description=NIH platform API
+After=network.target
+
+[Service]
+User=nih
+WorkingDirectory=/srv/nih-platform/backend
+Environment=FLASK_CONFIG=production
+ExecStart=/srv/nih-platform/backend/.venv/bin/python serve.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

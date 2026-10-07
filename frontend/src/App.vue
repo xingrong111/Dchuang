@@ -1,5 +1,5 @@
 <template>
-  <div id="app">
+  <el-config-provider :locale="zhCn"><div id="app">
     <!-- 顶部导航栏 -->
     <nav class="app-nav">
       <div class="nav-container">
@@ -22,7 +22,7 @@
             </router-link>
             <router-link to="/workshop" class="nav-link">
               <el-icon><Brush /></el-icon>
-              <span>AI共创工坊</span>
+              <span>共创工坊</span>
             </router-link>
             <router-link to="/community" class="nav-link">
               <el-icon><ChatLineSquare /></el-icon>
@@ -70,7 +70,7 @@
             <el-icon><OfficeBuilding /></el-icon> 数字博物馆
           </router-link>
           <router-link to="/workshop" class="mobile-nav-link" @click="showMobileMenu = false">
-            <el-icon><Brush /></el-icon> AI共创工坊
+            <el-icon><Brush /></el-icon> 共创工坊
           </router-link>
           <router-link to="/community" class="mobile-nav-link" @click="showMobileMenu = false">
             <el-icon><ChatLineSquare /></el-icon> 社区广场
@@ -88,10 +88,8 @@
 
     <!-- 主内容区 -->
     <main class="app-main">
-      <router-view v-slot="{ Component }">
-        <transition name="fade" mode="out-in">
-          <component :is="Component" />
-        </transition>
+      <router-view v-slot="{ Component, route }">
+        <component :is="Component" :key="route.path" />
       </router-view>
     </main>
 
@@ -106,7 +104,7 @@
           </div>
           <p class="footer-desc">
             非遗数字创新平台，致力于让传统非遗在数字时代焕发新生。
-            以AI为笔，以3D为墨，绘就江南非遗新画卷。
+            以创意为笔，以三维为墨，绘就江南非遗新画卷。
           </p>
         </div>
         <div class="footer-section">
@@ -115,7 +113,7 @@
             <el-icon><OfficeBuilding /></el-icon> 数字博物馆
           </router-link>
           <router-link to="/workshop">
-            <el-icon><Brush /></el-icon> AI共创工坊
+            <el-icon><Brush /></el-icon> 共创工坊
           </router-link>
           <router-link to="/community">
             <el-icon><ChatLineSquare /></el-icon> 社区广场
@@ -126,48 +124,38 @@
         </div>
         <div class="footer-section">
           <h4>联系我们</h4>
-          <p><el-icon><Message /></el-icon> contact@zhihui-xicheng.com</p>
-          <p><el-icon><Location /></el-icon> 江苏省无锡市</p>
-          <p><el-icon><Clock /></el-icon> 周一至周日 9:00-21:00</p>
+          <p v-if="contactEmail"><el-icon><Message /></el-icon> <a :href="'mailto:' + contactEmail">{{ contactEmail }}</a></p>
+          <router-link v-else to="/help">查看使用帮助</router-link>
+          <p>大学生创新项目 · 惠山泥人数字体验</p>
         </div>
         <div class="footer-section">
-          <h4>关注我们</h4>
-          <p class="footer-follow">扫码关注公众号，获取最新动态</p>
-          <div class="social-links">
-            <div class="social-item">
-              <el-icon :size="22"><ChatDotRound /></el-icon>
-              <span>微信</span>
-            </div>
-            <div class="social-item">
-              <el-icon :size="22"><UserFilled /></el-icon>
-              <span>微博</span>
-            </div>
-            <div class="social-item">
-              <el-icon :size="22"><Picture /></el-icon>
-              <span>抖音</span>
-            </div>
-          </div>
+          <h4>使用帮助</h4>
+          <router-link to="/help">创作与文创说明</router-link>
+          <router-link to="/model-library">浏览模型资产</router-link>
+          <router-link to="/privacy">数据使用说明</router-link>
         </div>
       </div>
       <div class="footer-bottom">
         <div class="footer-bottom-content">
-          <p>&copy; 2024 智绘锡承 · 江南非遗数字创新平台</p>
+          <p>&copy; {{ new Date().getFullYear() }} 智绘锡承 · 江南非遗数字创新平台</p>
           <div class="footer-links">
-            <span>关于我们</span>
+            <router-link to="/about">关于我们</router-link>
             <span class="divider">|</span>
-            <span>使用条款</span>
+            <router-link to="/terms">使用条款</router-link>
             <span class="divider">|</span>
-            <span>隐私政策</span>
+            <router-link to="/privacy">隐私政策</router-link>
             <span class="divider">|</span>
-            <span>帮助中心</span>
+            <router-link to="/help">帮助中心</router-link>
           </div>
         </div>
       </div>
     </footer>
-  </div>
+  </div></el-config-provider>
 </template>
 
 <script setup>
+import { ElConfigProvider } from 'element-plus'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store/userStore'
@@ -180,14 +168,10 @@ import {
   User,
   SwitchButton,
   Menu,
-  ChatDotRound,
-  UserFilled,
-  Picture,
   Message,
-  Location,
-  Clock
 } from '@element-plus/icons-vue'
 
+const contactEmail = import.meta.env.VITE_CONTACT_EMAIL || ''
 const router = useRouter()
 const userStore = useUserStore()
 const showMobileMenu = ref(false)
@@ -198,8 +182,8 @@ onMounted(() => {
   }
 })
 
-const handleLogout = () => {
-  userStore.logout()
+const handleLogout = async () => {
+  try { await userStore.logout() } catch { /* 本地凭据仍已清除 */ }
   router.push('/login')
   showMobileMenu.value = false
 }

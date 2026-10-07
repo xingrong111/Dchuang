@@ -12,7 +12,7 @@
           <div class="hero-seal">锡</div>
           <h1 class="hero-title">智绘锡承</h1>
           <p class="hero-subtitle">让传统非遗在数字时代焕发新生</p>
-          <p class="hero-desc">以AI为笔，以3D为墨，绘就江南非遗新画卷</p>
+          <p class="hero-desc">认识惠山泥人，尝试数字组装，分享自己的创作灵感。</p>
           <div class="hero-buttons">
             <router-link to="/workshop" class="hero-btn primary">
               <el-icon><Brush /></el-icon>
@@ -25,16 +25,8 @@
           </div>
         </div>
         <div class="hero-visual">
-          <div class="visual-container">
-            <div class="circle-main"></div>
-            <div class="circle-orb orb-1"></div>
-            <div class="circle-orb orb-2"></div>
-            <div class="circle-orb orb-3"></div>
-            <div class="particle p1"></div>
-            <div class="particle p2"></div>
-            <div class="particle p3"></div>
-            <div class="particle p4"></div>
-          </div>
+          <img class="concept-hero" :src="`${base}content/afu-desk-studio.webp`" alt="阿福桌面摆件设计效果图，非实物照片" />
+          <span class="hero-caption">从传统题材，到原创生活设计</span>
         </div>
       </div>
       <div class="hero-cloud-divider">
@@ -67,6 +59,7 @@
       </div>
     </section>
 
+    <section class="start-journey container"><h2>从观察到创作，走出自己的路径</h2><div><RouterLink to="/museum"><b>01 · 观察</b><h3>先看懂造型</h3><p>走进题材展览，观察面部、服饰与彩绘细节。</p></RouterLink><RouterLink to="/workshop"><b>02 · 组合</b><h3>动手搭配部件</h3><p>选择人物与配件，调整色彩，保存自己的构想。</p></RouterLink><RouterLink to="/community"><b>03 · 分享</b><h3>发现不同表达</h3><p>浏览完整作品，与创作者交流搭配思路。</p></RouterLink></div></section>
     <!-- 热门精选 -->
     <section class="highlights-section">
       <div class="container">
@@ -80,21 +73,23 @@
             <el-icon><ArrowRight /></el-icon>
           </router-link>
         </div>
+        <p v-if="!highlights.length">{{ highlightsError ? '作品暂时无法加载，请稍后重试' : '还没有公开作品，来发布第一件作品吧' }}</p>
         <div class="highlights-grid">
           <div class="highlight-card" v-for="item in highlights" :key="item.id">
-            <div class="highlight-image" :style="{ background: item.bgGradient }">
-              <span class="highlight-emoji">{{ item.icon }}</span>
+            <div class="highlight-image" :style="item.thumbnail ? '' : { background: item.bgGradient }">
+              <img v-if="item.thumbnail" :src="item.thumbnail" class="highlight-thumb" :alt="item.title" />
+              <span v-else class="highlight-emoji">{{ item.icon }}</span>
               <span class="highlight-category">{{ item.category }}</span>
             </div>
             <div class="highlight-info">
-              <h4>{{ item.title }}</h4>
+              <h4>{{ item.title }}</h4><p>{{ item.reason }}</p>
               <p class="highlight-author">
                 <el-icon><User /></el-icon>
                 {{ item.author }}
               </p>
               <div class="highlight-stats">
                 <span><el-icon><Star /></el-icon> {{ item.likes }}</span>
-                <span><el-icon><View /></el-icon> {{ item.views }}</span>
+                <span><el-icon><ChatRound /></el-icon> {{ item.comments }}</span>
               </div>
             </div>
           </div>
@@ -148,13 +143,16 @@
 </template>
 
 <script setup>
-import { Brush, OfficeBuilding, User, Star, View, ArrowRight, Avatar, ShoppingBag } from '@element-plus/icons-vue'
+import { ref, onMounted } from 'vue'
+import { Brush, OfficeBuilding, User, Star, ChatRound, ArrowRight, Avatar, ShoppingBag } from '@element-plus/icons-vue'
+import request from '@/api/index'
+const base = import.meta.env.BASE_URL
 
 const features = [
   {
     icon: Brush,
-    title: 'AI智能生成',
-    description: '文字描述一键生成3D非遗作品，让创意无限延伸',
+    title: '数字创作',
+    description: '输入描述、分析参考图或进行数字组装；生成能力以当前服务模式为准。',
     link: '/workshop',
     gradient: 'linear-gradient(135deg, #4a90a4 0%, #2d6172 100%)'
   },
@@ -175,54 +173,48 @@ const features = [
   {
     icon: ShoppingBag,
     title: '文创商城',
-    description: '数字作品实体化定制，让非遗走进生活',
+    description: '浏览文创商品与原创设计，管理购物车、收藏和订单。',
     link: '/shop',
     gradient: 'linear-gradient(135deg, #b8860b 0%, #8b6914 100%)'
   }
 ]
 
-const highlights = [
-  {
-    id: 1,
-    title: '现代风格惠山泥人',
-    author: '创意达人',
-    likes: 124,
-    views: 568,
-    icon: '🗿',
-    category: '惠山泥人',
-    bgGradient: 'linear-gradient(135deg, #e8f1f3 0%, #d4e4e8 100%)'
-  },
-  {
-    id: 2,
-    title: '数字锡绣 - 江南水乡',
-    author: '绣娘传人',
-    likes: 89,
-    views: 342,
-    icon: '🧵',
-    category: '锡绣',
-    bgGradient: 'linear-gradient(135deg, #fdf0e9 0%, #f5ddce 100%)'
-  },
-  {
-    id: 3,
-    title: 'Q版紫砂茶宠',
-    author: '陶艺新手',
-    likes: 156,
-    views: 623,
-    icon: '🍵',
-    category: '紫砂陶艺',
-    bgGradient: 'linear-gradient(135deg, #f5e6c8 0%, #ecd9a8 100%)'
-  }
-]
+const highlights = ref([])
+const highlightsError = ref(false)
 
-const stats = [
-  { value: '1,000+', label: '非遗作品' },
-  { value: '5,000+', label: '活跃用户' },
-  { value: '50+', label: '非遗项目' },
-  { value: '100,000+', label: '浏览次数' }
-]
+onMounted(async () => {
+  try {
+    const [resp, counts] = await Promise.all([request.get('/workshop/recommendations', { params: { per_page: 3 } }), request.get('/statistics/public')])
+    stats.value = [{ value: counts.data.artworks, label: '公开作品' }, { value: counts.data.users, label: '注册用户' }, { value: counts.data.creators, label: '创作者' }, { value: counts.data.views, label: '作品浏览' }]
+    const items = (resp.data || []).map((w, i) => ({
+      id: w.id,
+      title: w.title,
+      author: w.author?.username || '社区用户',
+      likes: w.like_count ?? 0,
+      comments: w.comment_count ?? 0,
+      icon: ['🗿', '🧵', '🍵'][i % 3],
+      category: (w.tags && w.tags[0]) || '社区作品',
+      thumbnail: w.thumbnail,
+      reason: w.recommendation_reason,
+      bgGradient: ['linear-gradient(135deg, #e8f1f3 0%, #d4e4e8 100%)',
+                   'linear-gradient(135deg, #fdf0e9 0%, #f5ddce 100%)',
+                   'linear-gradient(135deg, #f5e6c8 0%, #ecd9a8 100%)'][i % 3]
+    }))
+    if (items.length > 0) {
+      highlights.value = items
+    }
+  } catch {
+    highlightsError.value = true
+  }
+})
+
+const stats = ref([{ value: '—', label: '公开作品' }, { value: '—', label: '注册用户' }, { value: '—', label: '创作者' }, { value: '—', label: '作品浏览' }])
 </script>
 
 <style scoped>
+.start-journey{padding:40px 24px}.start-journey h2{color:#365e58;margin-bottom:24px}.start-journey>div{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}.start-journey a{padding:24px;background:#f4f1e9;border-radius:14px;text-decoration:none;color:#365e58}.start-journey b{color:#a55a3c;font-size:13px}.start-journey h3{margin:12px 0}.start-journey p{color:#67726a;line-height:1.8}@media(max-width:700px){.start-journey>div{grid-template-columns:1fr}}
+.concept-hero{width:100%;max-width:480px;border-radius:24px}.hero-visual{flex-direction:column;gap:14px}.hero-caption{color:#f0e4c9;font-size:14px}.concept-links{display:grid;grid-template-columns:1.2fr repeat(3,1fr);gap:24px;padding-top:32px;padding-bottom:48px;align-items:center}.concept-links img{width:100%;border-radius:12px}.concept-links h2,.concept-links h3{color:#365e58}.concept-links a{color:#2d6172;text-decoration:none}.concept-links p{color:#66786d}@media(max-width:700px){.concept-links{grid-template-columns:1fr 1fr}.concept-links>div{grid-column:1/-1}.concept-links h3{font-size:15px}}
+
 /* ============ Hero 区域 ============ */
 .home {
   width: 100%;
@@ -648,6 +640,15 @@ const stats = [
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+
+.highlight-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .highlight-emoji {

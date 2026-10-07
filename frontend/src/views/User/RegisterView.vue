@@ -18,7 +18,7 @@
             v-model="registerForm.username"
             type="text"
             placeholder="请输入用户名"
-            prefix-icon="User"
+            :prefix-icon="User"
             size="large"
           />
         </el-form-item>
@@ -28,7 +28,7 @@
             v-model="registerForm.email"
             type="email"
             placeholder="请输入邮箱"
-            prefix-icon="Message"
+            :prefix-icon="Message"
             size="large"
           />
         </el-form-item>
@@ -38,7 +38,7 @@
             v-model="registerForm.password"
             type="password"
             placeholder="请输入密码"
-            prefix-icon="Lock"
+            :prefix-icon="Lock"
             size="large"
             show-password
           />
@@ -49,7 +49,7 @@
             v-model="registerForm.confirmPassword"
             type="password"
             placeholder="请再次输入密码"
-            prefix-icon="Lock"
+            :prefix-icon="Lock"
             size="large"
             show-password
           />
@@ -89,10 +89,11 @@
 </template>
 
 <script setup>
+import { User, Lock, Message } from '@element-plus/icons-vue'
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { User, Message, Lock } from '@element-plus/icons-vue'
+
 import { useUserStore } from '@/store/userStore'
 
 const registerFormRef = ref(null)
@@ -149,7 +150,7 @@ const handleRegister = async () => {
 
   try {
     await registerFormRef.value.validate()
-  } catch (error) {
+  } catch {
     return
   }
 

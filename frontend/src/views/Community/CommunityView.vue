@@ -3,9 +3,9 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">创作社区</h1>
-        <p class="page-subtitle">分享你的作品，发现更多灵感</p>
+        <p class="page-subtitle">浏览无锡非遗主题的完整人物与摆件，打开作品旋转观察造型与细节。</p>
       </div>
-      <el-button type="primary" class="btn-gradient" @click="showUploadDialog = true">
+      <el-button type="primary" class="btn-gradient" @click="openUploadDialog">
         <el-icon><Upload /></el-icon>
         上传作品
       </el-button>
@@ -16,21 +16,14 @@
         <el-input
           v-model="searchKeyword"
           placeholder="搜索作品..."
-          prefix-icon="Search"
-          @keyup.enter="handleSearch"
+          :prefix-icon="Search"
           clearable
         />
-        <el-button type="primary" @click="handleSearch">搜索</el-button>
       </div>
 
       <div class="filter-section">
-        <el-select v-model="selectedCategory" placeholder="分类筛选" style="width: 150px;">
-          <el-option label="全部" value="" />
-          <el-option label="惠山泥人" value="huishan" />
-          <el-option label="锡绣" value="xixiu" />
-          <el-option label="紫砂陶艺" value="zisha" />
-          <el-option label="吴歌" value="wuge" />
-          <el-option label="其他" value="other" />
+        <el-select v-model="selectedCategory" placeholder="分类筛选" style="width: 150px;" clearable>
+          <el-option v-for="cat in categories" :key="cat" :label="cat" :value="cat" />
         </el-select>
 
         <el-select v-model="sortBy" placeholder="排序方式" style="width: 120px;">
@@ -43,41 +36,57 @@
 
     <div class="community-main">
       <div class="works-area">
-        <div v-if="filteredWorks.length === 0" class="empty-state">
+        <div v-if="isLoading" class="loading-state">
+          <el-icon class="is-loading" size="40" color="#4a90a4"><Loading /></el-icon>
+          <p>正在加载作品...</p>
+        </div>
+        <div v-else-if="loadError" class="empty-state" role="alert"><p>作品暂时无法加载</p><el-button @click="refreshPage">重新加载</el-button></div>
+        <div v-else-if="filteredWorks.length === 0" class="empty-state">
           <el-icon size="64" color="#ccc"><Picture /></el-icon>
           <p>没有找到相关作品</p>
-          <el-button type="primary" @click="showUploadDialog = true">发布作品</el-button>
+          <el-button type="primary" @click="openUploadDialog">发布作品</el-button>
         </div>
-        <div v-else class="works-grid">
-          <div class="work-card" v-for="work in filteredWorks" :key="work.id">
-            <div class="work-image-wrapper">
-              <div class="work-image">
-                <img :src="work.image || '/assets/images/logo.svg'" :alt="work.title" />
+        <template v-else>
+          <div class="works-grid">
+            <div class="work-card" v-for="work in filteredWorks" :key="work.id">
+              <div class="work-image-wrapper" @click="viewWorkDetail(work)">
+                <div class="work-image">
+                  <img v-if="work.thumbnail" :src="work.thumbnail" :alt="work.title" />
+                  <div v-else class="work-image-placeholder">
+                    <el-icon size="40" color="#b8c4cc"><Picture /></el-icon>
+                  </div>
+                </div>
+                <div class="category-tag">
+                  <span v-if="work.isAi" class="ai-badge">数字创作</span>
+                  {{ getFirstTag(work) }}
+                </div>
               </div>
-              <div class="category-tag">{{ getCategoryName(work.category) }}</div>
-            </div>
-            <div class="work-content">
-              <h4 class="work-title">{{ work.title }}</h4>
-              <p class="work-description">{{ work.description }}</p>
-              <p class="work-author">by {{ work.author }}</p>
-              <div class="work-stats">
-                <span class="like-btn" @click="handleLike(work)">
-                  <el-icon :color="work.isLiked ? '#e74c3c' : '#999'"><Star /></el-icon>
-                  {{ work.likes }}
-                </span>
-                <span>
-                  <el-icon><Picture /></el-icon>
-                  {{ work.views }}
-                </span>
-                <span>
-                  <el-icon><ChatRound /></el-icon>
-                  {{ work.commentCount }}
-                </span>
+              <div class="work-content">
+                <h4 class="work-title">{{ work.title }}</h4>
+                <p class="work-description">{{ work.description || '暂无描述' }}</p>
+                <p class="work-author">by {{ work.author }}</p>
+                <div class="work-stats">
+                  <span class="like-btn" @click="handleLike(work)">
+                    <el-icon :color="work.isLiked ? '#e74c3c' : '#999'"><Star /></el-icon>
+                    {{ work.likes }}
+                  </span>
+                  <span>
+                    <el-icon><Picture /></el-icon>
+                    {{ work.views }}
+                  </span>
+                  <span>
+                    <el-icon><ChatRound /></el-icon>
+                    {{ work.commentCount }}
+                  </span>
+                </div>
+                <button class="view-detail-btn" @click="viewWorkDetail(work)">查看详情</button>
               </div>
-              <button class="view-detail-btn" @click="viewWorkDetail(work)">查看详情</button>
             </div>
           </div>
-        </div>
+          <div v-if="hasMore" class="load-more">
+            <el-button :loading="isLoadingMore" @click="loadMore">加载更多</el-button>
+          </div>
+        </template>
       </div>
 
       <div class="sidebar">
@@ -91,6 +100,7 @@
                 <span class="rank-likes">{{ work.likes }} 赞</span>
               </div>
             </div>
+            <p v-if="rankingWorks.length === 0" class="no-comments">暂无数据</p>
           </div>
         </div>
 
@@ -99,11 +109,11 @@
           <div class="category-list">
             <span
               v-for="cat in categories"
-              :key="cat.value"
-              :class="{ active: selectedCategory === cat.value }"
-              @click="selectedCategory = cat.value"
+              :key="cat"
+              :class="{ active: selectedCategory === cat }"
+              @click="selectedCategory = selectedCategory === cat ? '' : cat"
             >
-              {{ cat.label }}
+              {{ cat }}
             </span>
           </div>
         </div>
@@ -115,6 +125,7 @@
               <span class="latest-title">{{ work.title }}</span>
               <span class="latest-author">{{ work.author }}</span>
             </div>
+            <p v-if="latestWorks.length === 0" class="no-comments">暂无数据</p>
           </div>
         </div>
       </div>
@@ -123,19 +134,20 @@
     <el-dialog title="上传作品" v-model="showUploadDialog" width="520px" top="50px">
       <el-form :model="uploadForm" label-width="90px" class="upload-form">
         <el-form-item label="作品标题" required>
-          <el-input v-model="uploadForm.title" placeholder="请输入作品标题" />
+          <el-input v-model="uploadForm.title" placeholder="请输入作品标题" maxlength="200" />
         </el-form-item>
-        <el-form-item label="作品描述" required>
+        <el-form-item label="作品描述">
           <el-input v-model="uploadForm.description" type="textarea" placeholder="请输入作品描述" :rows="3" />
         </el-form-item>
-        <el-form-item label="作品分类" required>
-          <el-select v-model="uploadForm.category" placeholder="请选择分类">
-            <el-option v-for="cat in categories" :key="cat.value" :label="cat.label" :value="cat.value" />
+        <el-form-item label="作品分类">
+          <el-select v-model="uploadForm.category" placeholder="请选择分类" clearable>
+            <el-option v-for="cat in categories" :key="cat" :label="cat" :value="cat" />
           </el-select>
         </el-form-item>
-        <el-form-item label="作品图片">
+        <el-form-item label="封面图片">
           <el-upload
             action="/api/workshop/upload"
+            :headers="uploadHeaders"
             :on-success="handleUploadSuccess"
             :on-error="handleUploadError"
             :show-file-list="false"
@@ -143,23 +155,31 @@
           >
             <el-button type="primary">选择图片</el-button>
           </el-upload>
-          <img v-if="uploadForm.image" :src="uploadForm.image" class="upload-preview" />
+          <img v-if="uploadForm.thumbnail" :src="uploadForm.thumbnail" class="upload-preview" />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showUploadDialog = false">取消</el-button>
-        <el-button type="primary" @click="submitUpload" :disabled="!uploadForm.title || !uploadForm.category">提交</el-button>
+        <el-button type="primary" :loading="submitting" @click="submitUpload" :disabled="!uploadForm.title">提交</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog title="作品详情" v-model="showDetailDialog" width="650px" top="30px">
-      <div v-if="selectedWork" class="work-detail">
+    <el-dialog title="作品详情" v-model="showDetailDialog" width="650px" top="30px" @closed="selectedWork = null">
+      <div v-if="selectedWork" v-loading="detailLoading" class="work-detail">
         <div class="detail-image-wrapper">
-          <img :src="selectedWork.image || '/assets/images/logo.svg'" :alt="selectedWork.title" class="detail-image" />
-          <div class="detail-category">{{ getCategoryName(selectedWork.category) }}</div>
+          <img v-if="selectedWork.thumbnail" :src="selectedWork.thumbnail" :alt="selectedWork.title" class="detail-image" />
+          <div v-else class="detail-image detail-image-placeholder">
+            <el-icon size="48" color="#b8c4cc"><Picture /></el-icon>
+            <p v-if="selectedWork.modelUrl">这是一个 3D 模型作品</p>
+          </div>
+          <div class="detail-category">
+            <span v-if="selectedWork.isAi" class="ai-badge">数字创作</span>
+            {{ getFirstTag(selectedWork) }}
+          </div>
         </div>
         <h3 class="detail-title">{{ selectedWork.title }}</h3>
-        <p class="detail-desc">{{ selectedWork.description }}</p>
+        <ModelPreview v-if="selectedWork.modelUrl" :url="selectedWork.modelUrl" />
+        <p class="detail-desc">{{ selectedWork.description || '暂无描述' }}</p>
         <div class="detail-meta">
           <span class="detail-author">作者: {{ selectedWork.author }}</span>
           <div class="detail-stats">
@@ -167,13 +187,13 @@
               <el-icon :color="selectedWork.isLiked ? '#e74c3c' : '#999'"><Star /></el-icon>
               {{ selectedWork.likes }}
             </span>
+            <span @click="handleCollect(selectedWork)" class="like-action">
+              <el-icon :color="selectedWork.isCollected ? '#b8860b' : '#999'"><CollectionTag /></el-icon>
+              {{ selectedWork.isCollected ? '已收藏' : '收藏' }}
+            </span>
             <span>
               <el-icon><Picture /></el-icon>
               {{ selectedWork.views }}
-            </span>
-            <span>
-              <el-icon><ChatRound /></el-icon>
-              {{ selectedWork.commentCount }}
             </span>
           </div>
         </div>
@@ -181,39 +201,21 @@
         <div class="comments-section">
           <h4><el-icon><ChatRound /></el-icon> 评论 ({{ selectedWork.commentCount }})</h4>
           <div class="comment-list">
-            <div v-for="comment in selectedWork.comments" :key="comment.id" class="comment-item">
+            <div v-for="comment in comments" :key="comment.id" class="comment-item">
               <div class="comment-header">
-                <span class="comment-author">{{ comment.author }}</span>
-                <span class="comment-time">{{ comment.time }}</span>
+                <span class="comment-author">{{ comment.author?.username || '用户' }}</span>
+                <span class="comment-time">{{ formatTime(comment.created_at) }}</span>
               </div>
               <p class="comment-content">{{ comment.content }}</p>
-              <div class="comment-actions">
-                <span class="reply-btn" @click="replyToComment(comment)">
-                  <el-icon><Message /></el-icon> 回复
+              <div class="comment-actions" v-if="isOwnComment(comment)">
+                <span class="reply-btn" @click="handleDeleteComment(comment)">
+                  <el-icon><Delete /></el-icon> 删除
                 </span>
-                <span v-if="comment.replies && comment.replies.length">
-                  <el-icon><ChatDotSquare /></el-icon> {{ comment.replies.length }}
-                </span>
-              </div>
-              <div v-if="comment.replies && comment.replies.length" class="reply-list">
-                <div v-for="reply in comment.replies" :key="reply.id" class="reply-item">
-                  <span class="reply-author">{{ reply.author }}:</span>
-                  <span class="reply-content">{{ reply.content }}</span>
-                </div>
-              </div>
-              <div v-if="replyingTo === comment.id" class="reply-input">
-                <el-input
-                  v-model="replyContent"
-                  placeholder="输入回复..."
-                  @keyup.enter="submitReply(comment)"
-                  size="small"
-                />
-                <el-button size="small" type="primary" @click="submitReply(comment)">发送</el-button>
-                <el-button size="small" @click="replyingTo = null">取消</el-button>
               </div>
             </div>
-            <p v-if="!selectedWork.comments || selectedWork.comments.length === 0" class="no-comments">暂无评论，快来发表第一条评论吧</p>
+            <p v-if="comments.length === 0" class="no-comments">暂无评论，快来发表第一条评论吧</p>
           </div>
+          <el-button v-if="commentsHasMore" :loading="commentsLoading" @click="loadMoreComments">加载更多评论</el-button>
           <el-input
             v-model="newComment"
             placeholder="发表评论..."
@@ -224,6 +226,7 @@
           <el-button type="primary" @click="submitComment" :disabled="!newComment.trim() || !isLoggedIn" style="margin-top: 12px;">
             发表评论
           </el-button>
+          <p v-if="!isLoggedIn" class="no-comments" style="padding: 8px 0 0;">登录后即可评论</p>
         </div>
       </div>
     </el-dialog>
@@ -231,112 +234,38 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Upload, Star, Picture, ChatRound, Search, Trophy, Grid, Clock, Message, ChatDotSquare } from '@element-plus/icons-vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import ModelPreview from '@/components/ModelPreview.vue'
+import { useUserStore } from '@/store/userStore'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Search, Upload, Star, Picture, ChatRound, Trophy, Grid, Clock, Delete, CollectionTag, Loading } from '@element-plus/icons-vue'
+import {
+  getWorks, getWorkDetail, saveWork, likeWork, unlikeWork,
+  collectWork, uncollectWork, getComments, postComment, deleteComment
+} from '@/api/workshop'
 
-const categories = [
-  { label: '惠山泥人', value: 'huishan' },
-  { label: '锡绣', value: 'xixiu' },
-  { label: '紫砂陶艺', value: 'zisha' },
-  { label: '吴歌', value: 'wuge' },
-  { label: '其他', value: 'other' }
-]
+// 后端以 tags 字段承载分类，分类项与社区筛选一致
+const categories = ['惠山泥人', '锡绣', '紫砂陶艺', '吴歌', '其他']
 
-const works = ref([
-  {
-    id: 1,
-    title: '现代风格惠山泥人',
-    description: '结合现代审美重新设计的惠山泥人作品，保留传统工艺的同时融入了当代艺术元素。',
-    author: '创意达人',
-    likes: 124,
-    views: 568,
-    commentCount: 23,
-    isLiked: false,
-    image: null,
-    category: 'huishan',
-    comments: [
-      { id: 1, author: '艺术爱好者', content: '非常有创意！', time: '2024-01-15 10:30', replies: [
-        { id: 101, author: '创意达人', content: '谢谢！' }
-      ]},
-      { id: 2, author: '非遗传承人', content: '传统与现代的完美结合', time: '2024-01-15 11:00', replies: [] }
-    ]
-  },
-  {
-    id: 2,
-    title: '数字锡绣-江南水乡',
-    description: '运用数字技术还原江南水乡的细腻之美，展现锡绣的独特魅力。',
-    author: '绣娘传人',
-    likes: 89,
-    views: 342,
-    commentCount: 15,
-    isLiked: true,
-    image: null,
-    category: 'xixiu',
-    comments: [
-      { id: 1, author: '文化学者', content: '太美了，江南水乡的韵味十足', time: '2024-01-14 09:15', replies: [] }
-    ]
-  },
-  {
-    id: 3,
-    title: 'Q版紫砂茶宠',
-    description: '以传统紫砂工艺为基础，设计的可爱Q版茶宠系列。',
-    author: '陶艺新手',
-    likes: 156,
-    views: 623,
-    commentCount: 31,
-    isLiked: false,
-    image: null,
-    category: 'zisha',
-    comments: []
-  },
-  {
-    id: 4,
-    title: '吴歌主题插画',
-    description: '以吴歌为主题创作的插画作品，展现江南民歌的意境之美。',
-    author: '音乐爱好者',
-    likes: 67,
-    views: 289,
-    commentCount: 8,
-    isLiked: false,
-    image: null,
-    category: 'wuge',
-    comments: []
-  },
-  {
-    id: 5,
-    title: '精微绣花鸟图',
-    description: '传承百年的精微绣技艺，一针一线勾勒出栩栩如生的花鸟。',
-    author: '非遗大师',
-    likes: 234,
-    views: 890,
-    commentCount: 45,
-    isLiked: false,
-    image: null,
-    category: 'xixiu',
-    comments: []
-  },
-  {
-    id: 6,
-    title: '传统惠山泥人阿福',
-    description: '经典的惠山泥人阿福形象，寓意吉祥如意，福寿安康。',
-    author: '泥人世家',
-    likes: 178,
-    views: 543,
-    commentCount: 28,
-    isLiked: true,
-    image: null,
-    category: 'huishan',
-    comments: []
-  }
-])
+const works = ref([])
+const rankingWorks = ref([])
+const latestWorks = ref([])
+let loadedPage = 0, requestVersion = 0, filterTimer
+const isLoading = ref(true)
+const loadError = ref(false)
+const isLoadingMore = ref(false)
+const hasMore = ref(false)
 
 const showUploadDialog = ref(false)
 const showDetailDialog = ref(false)
 const selectedWork = ref(null)
+const detailLoading = ref(false)
+const isAuthor = ref(false)
+const comments = ref([])
+const commentsHasMore = ref(false), commentsLoading = ref(false)
+let commentPage = 1, detailVersion = 0
 const newComment = ref('')
-const replyContent = ref('')
-const replyingTo = ref(null)
+const submitting = ref(false)
 
 const searchKeyword = ref('')
 const selectedCategory = ref('')
@@ -345,140 +274,275 @@ const sortBy = ref('newest')
 const uploadForm = ref({
   title: '',
   description: '',
-  image: null,
-  category: ''
+  category: '',
+  thumbnail: null
 })
 
-const isLoggedIn = computed(() => localStorage.getItem('user') !== null)
+const userStore = useUserStore()
+const isLoggedIn = computed(() => !!userStore.user)
+const currentUser = computed(() => userStore.user)
+const uploadHeaders = computed(() => {
+  const token = currentUser.value?.token
+  return token ? { Authorization: `Bearer ${token}` } : {}
+})
 
-const filteredWorks = computed(() => {
-  let result = [...works.value]
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    result = result.filter(w =>
-      w.title.toLowerCase().includes(keyword) ||
-      w.description.toLowerCase().includes(keyword) ||
-      w.author.toLowerCase().includes(keyword)
-    )
+// ---- 后端字段 → 视图字段映射 ----
+const mapWork = (w) => ({
+  id: w.id,
+  title: w.title,
+  description: w.description,
+  tags: w.tags || [],
+  thumbnail: w.thumbnail,
+  modelUrl: w.model_url,
+  isAi: !!w.is_ai_generated,
+  author: w.author?.username || '未知作者',
+  likes: w.like_count ?? 0,
+  views: w.view_count ?? 0,
+  commentCount: w.comment_count ?? 0,
+  collected: !!w.current_user_status?.collected,
+  isLiked: !!w.current_user_status?.liked,
+  isCollected: !!w.current_user_status?.collected
+})
+
+const fetchWorks = async (page = 1) => {
+  const version = ++requestVersion
+  const resp = await getWorks({ page, per_page: 12, q: searchKeyword.value.trim(),
+    category: selectedCategory.value, sort: sortBy.value === 'newest' ? 'latest' : sortBy.value })
+  if (version !== requestVersion) return
+  const mapped = (resp.data || []).map(mapWork)
+  loadError.value = false
+  if (page === 1) {
+    works.value = mapped
+  } else {
+    works.value.push(...mapped)
   }
-  if (selectedCategory.value) {
-    result = result.filter(w => w.category === selectedCategory.value)
-  }
-  switch (sortBy.value) {
-    case 'newest':
-      result.sort((a, b) => b.id - a.id)
-      break
-    case 'popular':
-      result.sort((a, b) => b.likes - a.likes)
-      break
-    case 'comments':
-      result.sort((a, b) => b.commentCount - a.commentCount)
-      break
-  }
-  return result
-})
-
-const rankingWorks = computed(() => {
-  return [...works.value].sort((a, b) => b.likes - a.likes).slice(0, 5)
-})
-
-const latestWorks = computed(() => {
-  return [...works.value].sort((a, b) => b.id - a.id).slice(0, 5)
-})
-
-const getCategoryName = (category) => {
-  const cat = categories.find(c => c.value === category)
-  return cat ? cat.label : '其他'
+  hasMore.value = !!resp.meta?.pagination?.has_next
+  loadedPage = page
 }
 
-const handleSearch = () => {
-  showDetailDialog.value = false
+const refreshSidebar = async () => {
+  const [ranking, latest] = await Promise.all([
+    getWorks({ sort: 'popular', per_page: 5 }), getWorks({ sort: 'latest', per_page: 5 })
+  ])
+  rankingWorks.value = (ranking.data || []).map(mapWork)
+  latestWorks.value = (latest.data || []).map(mapWork)
+}
+watch([searchKeyword, selectedCategory, sortBy], () => {
+  clearTimeout(filterTimer)
+  ++requestVersion
+  hasMore.value = false
+  isLoading.value = true
+  filterTimer = setTimeout(async () => {
+    try { await fetchWorks(1) } catch { loadError.value = true }
+    finally { isLoading.value = false }
+  }, 250)
+})
+onUnmounted(() => { clearTimeout(filterTimer); ++requestVersion })
+
+const refreshPage = async () => {
+  isLoading.value = true
+  const [main] = await Promise.allSettled([fetchWorks(1), refreshSidebar()])
+  loadError.value = main.status === 'rejected'
+  isLoading.value = false
+}
+onMounted(refreshPage)
+
+const loadMore = async () => {
+  isLoadingMore.value = true
+  try {
+    await fetchWorks(loadedPage + 1)
+  } catch {
+    /* API 拦截器提示；保留当前页用于重试 */
+  } finally {
+    isLoadingMore.value = false
+  }
 }
 
-const handleLike = (work) => {
+const getFirstTag = (work) => {
+  return (work.tags && work.tags.length > 0) ? work.tags[0] : '未分类'
+}
+
+
+const filteredWorks = computed(() => works.value)
+const syncWork = (work, changes) => {
+  Object.assign(work, changes)
+  for (const list of [works.value, rankingWorks.value, latestWorks.value]) {
+    const item = list.find(candidate => candidate.id === work.id)
+    if (item) Object.assign(item, changes)
+  }
+  if (selectedWork.value?.id === work.id) Object.assign(selectedWork.value, changes)
+}
+const interactionBusy = new Set()
+
+// ---- 互动 ----
+const handleLike = async (work) => {
   if (!isLoggedIn.value) {
     ElMessage.warning('请先登录')
     return
   }
-  work.isLiked = !work.isLiked
-  work.likes += work.isLiked ? 1 : -1
-  ElMessage.success(work.isLiked ? '点赞成功' : '取消点赞')
+  if (interactionBusy.has(work.id)) return
+  interactionBusy.add(work.id)
+  try {
+    const resp = work.isLiked ? await unlikeWork(work.id) : await likeWork(work.id)
+    syncWork(work, { isLiked: resp.data.liked, likes: resp.data.like_count })
+  } catch {
+    // 拦截器已提示
+  } finally { interactionBusy.delete(work.id) }
 }
 
-const viewWorkDetail = (work) => {
-  selectedWork.value = work
-  work.views++
-  showDetailDialog.value = true
+const handleCollect = async (work) => {
+  if (!isLoggedIn.value) {
+    ElMessage.warning('请先登录')
+    return
+  }
+  if (interactionBusy.has(work.id)) return
+  interactionBusy.add(work.id)
+  try {
+    const resp = work.isCollected ? await uncollectWork(work.id) : await collectWork(work.id)
+    syncWork(work, { isCollected: resp.data.collected, collected: resp.data.collected })
+    ElMessage.success(resp.data.collected ? '收藏成功' : '已取消收藏')
+  } catch {
+    // 拦截器已提示
+  } finally { interactionBusy.delete(work.id) }
 }
 
-const submitComment = () => {
-  if (!newComment.value.trim() || !isLoggedIn.value) return
-  const user = JSON.parse(localStorage.getItem('user'))
-  selectedWork.value.comments.push({
-    id: Date.now(),
-    author: user.username || '用户',
-    content: newComment.value.trim(),
-    time: new Date().toLocaleString('zh-CN'),
-    replies: []
-  })
-  selectedWork.value.commentCount++
+const isOwnComment = (comment) => {
+  return comment.user_id && currentUser.value?.id && comment.user_id === currentUser.value.id
+}
+
+const formatTime = (iso) => {
+  if (!iso) return ''
+  return new Date(iso).toLocaleString('zh-CN')
+}
+
+// ---- 详情 ----
+const viewWorkDetail = async (work) => {
+  const version = ++detailVersion
+  selectedWork.value = null
   newComment.value = ''
-  ElMessage.success('评论成功')
+  commentsHasMore.value = false
+  showDetailDialog.value = true
+  detailLoading.value = true
+  comments.value = []
+  try {
+    const resp = await getWorkDetail(work.id)
+    if (version !== detailVersion || !showDetailDialog.value) return
+    const d = resp.data
+    const mapped = mapWork(d)
+    mapped.isLiked = !!d.current_user_status?.liked
+    mapped.isCollected = !!d.current_user_status?.collected
+    isAuthor.value = !!d.current_user_status?.is_author
+    selectedWork.value = mapped
+    // 同步卡片交互状态
+    const card = works.value.find(w => w.id === work.id)
+    if (card) {
+      card.isLiked = mapped.isLiked
+      card.likes = mapped.likes
+    }
+    await loadComments(work.id, 1, version)
+  } catch {
+    if (version === detailVersion) showDetailDialog.value = false
+  } finally {
+    if (version === detailVersion) detailLoading.value = false
+  }
 }
 
-const replyToComment = (comment) => {
+const loadComments = async (workId, page = 1, version = detailVersion) => {
+  const resp = await getComments(workId, { page, per_page: 20 })
+  if (version !== detailVersion || selectedWork.value?.id !== workId || !showDetailDialog.value) return
+  const items = resp.data || []
+  if (page === 1) comments.value = items
+  else comments.value.push(...items.filter(item => !comments.value.some(existing => existing.id === item.id)))
+  commentPage = page
+  commentsHasMore.value = !!resp.meta?.pagination?.has_next
+}
+const loadMoreComments = async () => {
+  if (commentsLoading.value || !selectedWork.value) return
+  commentsLoading.value = true
+  try { await loadComments(selectedWork.value.id, commentPage + 1) }
+  catch { /* API 拦截器提示 */ }
+  finally { commentsLoading.value = false }
+}
+
+const submitComment = async () => {
+  if (!newComment.value.trim() || !isLoggedIn.value || !selectedWork.value) return
+  const work = selectedWork.value
+  if (interactionBusy.has(work.id)) return
+  interactionBusy.add(work.id)
+  try {
+    const resp = await postComment(work.id, { content: newComment.value.trim() })
+    if (selectedWork.value?.id !== work.id || !showDetailDialog.value) return
+    // 评论列表按 created_at 倒序（最新在前），新评论插到列表头部
+    comments.value.unshift(resp.data.comment)
+    syncWork(selectedWork.value, { commentCount: selectedWork.value.commentCount + 1 })
+    newComment.value = ''
+    ElMessage.success('评论成功')
+  } catch {
+    // 拦截器已提示
+  } finally { interactionBusy.delete(work.id) }
+}
+
+const handleDeleteComment = async (comment) => {
+  try {
+    await ElMessageBox.confirm('确定删除这条评论吗？', '提示', { type: 'warning' })
+  } catch {
+    return
+  }
+  try {
+    await deleteComment(comment.id)
+    comments.value = comments.value.filter(c => c.id !== comment.id)
+    if (selectedWork.value) syncWork(selectedWork.value, { commentCount: Math.max(0, selectedWork.value.commentCount - 1) })
+    ElMessage.success('评论已删除')
+  } catch {
+    // 拦截器已提示
+  }
+}
+
+// ---- 发布作品 ----
+const openUploadDialog = () => {
   if (!isLoggedIn.value) {
     ElMessage.warning('请先登录')
     return
   }
-  replyingTo.value = replyingTo.value === comment.id ? null : comment.id
-}
-
-const submitReply = (comment) => {
-  if (!replyContent.value.trim() || !isLoggedIn.value) return
-  const user = JSON.parse(localStorage.getItem('user'))
-  if (!comment.replies) comment.replies = []
-  comment.replies.push({
-    id: Date.now(),
-    author: user.username || '用户',
-    content: replyContent.value.trim()
-  })
-  replyContent.value = ''
-  replyingTo.value = null
-  ElMessage.success('回复成功')
+  showUploadDialog.value = true
 }
 
 const handleUploadSuccess = (response) => {
-  uploadForm.value.image = response.data.url
-  ElMessage.success('图片上传成功')
+  if (response.code === 200) {
+    uploadForm.value.thumbnail = response.data.url
+    ElMessage.success('图片上传成功')
+  } else {
+    ElMessage.error(response.message || '图片上传失败')
+  }
 }
 
 const handleUploadError = () => {
   ElMessage.error('图片上传失败')
 }
 
-const submitUpload = () => {
-  const user = JSON.parse(localStorage.getItem('user'))
-  works.value.unshift({
-    id: Date.now(),
-    title: uploadForm.value.title,
-    description: uploadForm.value.description,
-    image: uploadForm.value.image,
-    author: user?.username || '用户',
-    likes: 0,
-    views: 0,
-    commentCount: 0,
-    isLiked: false,
-    category: uploadForm.value.category,
-    comments: []
-  })
-  showUploadDialog.value = false
-  uploadForm.value = { title: '', description: '', image: null, category: '' }
-  ElMessage.success('作品上传成功')
+const submitUpload = async () => {
+  submitting.value = true
+  try {
+    await saveWork({
+      title: uploadForm.value.title,
+      description: uploadForm.value.description || null,
+      tags: uploadForm.value.category ? [uploadForm.value.category] : [],
+      thumbnail: uploadForm.value.thumbnail || null
+    })
+    showUploadDialog.value = false
+    uploadForm.value = { title: '', description: '', category: '', thumbnail: null }
+    ElMessage.success('作品发布成功')
+    await Promise.all([fetchWorks(1), refreshSidebar()])
+  } catch {
+    // 拦截器已提示
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
 <style scoped>
+.community{max-width:1240px}.works-area{min-width:0}.community .works-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.community .work-image img{object-fit:contain;background:#f3eee5}.community .work-description{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.community .sidebar{position:sticky;top:90px;align-self:flex-start}@media(min-width:1400px){.community .works-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:600px){.community .works-grid{grid-template-columns:1fr}.community .search-bar,.community .search-bar .el-input{width:100%}.community .sidebar{position:static}.community .toolbar{padding:16px}.community .page-header{align-items:flex-start}}
 .community {
   max-width: 1280px;
 }
@@ -508,6 +572,11 @@ const submitUpload = () => {
 
 .toolbar {
   padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .search-bar .el-input {
@@ -523,6 +592,19 @@ const submitUpload = () => {
   flex: 1;
 }
 
+.loading-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 16px;
+}
+
+.loading-state p {
+  margin: 16px 0 0;
+  color: #999;
+  font-size: 1rem;
+}
+
 .empty-state {
   text-align: center;
   padding: 60px 20px;
@@ -534,6 +616,11 @@ const submitUpload = () => {
   margin: 16px 0 24px;
   color: #999;
   font-size: 1rem;
+}
+
+.load-more {
+  text-align: center;
+  padding: 24px 0;
 }
 
 .works-grid {
@@ -557,6 +644,7 @@ const submitUpload = () => {
 
 .work-image-wrapper {
   position: relative;
+  cursor: pointer;
 }
 
 .work-image {
@@ -572,6 +660,14 @@ const submitUpload = () => {
   object-fit: cover;
 }
 
+.work-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .category-tag {
   position: absolute;
   top: 12px;
@@ -583,6 +679,16 @@ const submitUpload = () => {
   font-weight: 500;
   border-radius: 20px;
   backdrop-filter: blur(4px);
+}
+
+.ai-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  margin-right: 6px;
+  background: linear-gradient(135deg, #b8860b, #c7693d);
+  color: white;
+  font-size: 0.7rem;
+  border-radius: 10px;
 }
 
 .work-content {
@@ -808,6 +914,7 @@ const submitUpload = () => {
 
 .work-detail {
   text-align: center;
+  min-height: 200px;
 }
 
 .detail-image-wrapper {
@@ -821,6 +928,21 @@ const submitUpload = () => {
   object-fit: cover;
   border-radius: 16px;
   background: #f5f5f5;
+}
+
+.detail-image-placeholder {
+  height: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #999;
+}
+
+.detail-image-placeholder p {
+  margin: 0;
+  font-size: 0.9rem;
 }
 
 .detail-category {
@@ -871,6 +993,9 @@ const submitUpload = () => {
 
 .like-action {
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .comments-section {
@@ -883,6 +1008,9 @@ const submitUpload = () => {
   font-weight: 600;
   color: #2c3e50;
   margin: 0 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .comment-list {
@@ -915,6 +1043,7 @@ const submitUpload = () => {
 .comment-content {
   color: #666;
   line-height: 1.6;
+  margin: 0;
 }
 
 .comment-actions {
@@ -923,41 +1052,11 @@ const submitUpload = () => {
 
 .reply-btn {
   font-size: 0.85rem;
-  color: #4a90a4;
+  color: #e74c3c;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 4px;
-}
-
-.reply-list {
-  margin-top: 12px;
-  padding-left: 20px;
-  border-left: 2px solid #ddd;
-}
-
-.reply-item {
-  padding: 10px 0;
-}
-
-.reply-author {
-  font-weight: 500;
-  color: #333;
-}
-
-.reply-content {
-  color: #666;
-}
-
-.reply-input {
-  display: flex;
-  gap: 10px;
-  margin-top: 12px;
-  align-items: center;
-}
-
-.reply-input .el-input {
-  flex: 1;
 }
 
 .no-comments {
@@ -977,11 +1076,6 @@ const submitUpload = () => {
 
   .search-bar .el-input {
     width: 100%;
-  }
-
-  .toolbar {
-    flex-direction: column;
-    gap: 16px;
   }
 }
 </style>

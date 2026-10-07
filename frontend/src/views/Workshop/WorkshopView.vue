@@ -2,8 +2,8 @@
   <div class="workshop page-container">
     <div class="page-header">
       <div>
-        <h1 class="page-title">AI+3D 共创工坊</h1>
-        <p class="page-subtitle">用AI技术创造属于你的非遗作品</p>
+        <h1 class="page-title">共创工坊</h1>
+        <p class="page-subtitle">用文字、图片和三维部件创作你的非遗作品</p>
       </div>
     </div>
 
@@ -19,8 +19,10 @@
     </nav>
 
     <div class="content-area">
-      <MultiModalInputView v-if="currentTab === 'multi-modal'" />
-      <AIWorkshopView v-else />
+      <KeepAlive>
+        <MultiModalInputView v-if="currentTab === 'multi-modal'" />
+        <AIWorkshopView v-else />
+      </KeepAlive>
     </div>
   </div>
 </template>
@@ -35,6 +37,7 @@ const currentTab = ref('multi-modal');
 </script>
 
 <style scoped>
+.workshop :deep(.page-container){padding:20px;max-width:none}.workshop :deep(.ai-workshop-view){height:min(860px,calc(100vh - 210px));min-height:660px}@media(max-width:600px){.workshop .sub-nav{padding:10px;gap:8px}.workshop .sub-nav button{padding:12px 16px;font-size:14px}.workshop :deep(.ai-workshop-view){height:auto}}
 .workshop {
   max-width: 1400px;
 }

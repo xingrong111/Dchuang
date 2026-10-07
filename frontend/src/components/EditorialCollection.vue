@@ -1,0 +1,9 @@
+<template>
+  <section class="editorial"><header><span>文化阅读 · 惠山泥人</span><h2>从一抔泥土，认识彩塑</h2><p>以惠山泥人为主线，从造型、色彩和题材开始观察。</p></header><div class="culture-grid"><article v-for="item in content.culture" :key="item.title"><h3>{{ item.title }}</h3><div class="chapter-body"><p v-for="paragraph in item.paragraphs || [item.text]" :key="paragraph">{{ paragraph }}</p></div></article></div><a :href="content.official" target="_blank" rel="noopener noreferrer">文化资料依据：中国非物质文化遗产网 · 泥塑（惠山泥人） ↗</a><p class="source-note">从概括轮廓到人物细节，从底色铺陈到纹样点染，塑形与彩绘共同构成泥人的艺术表达。</p><div class="journey"><h3>把观察变成创作</h3><p>先认识作品，再尝试数字组装，最后探索传统题材的文创设计。</p><nav><RouterLink to="/museum">阅读文化资料</RouterLink><RouterLink to="/workshop/3d-editor">尝试数字组装</RouterLink><RouterLink to="/shop/designs">探索文创设计</RouterLink></nav></div></section>
+</template>
+<script setup>
+import content from '@/content/editorial.json'
+</script>
+<style scoped>
+.editorial{max-width:1200px;margin:auto;padding:48px 24px}.editorial header>span{font-size:13px;color:#a55a3c;letter-spacing:2px}.editorial h2{font-size:30px;color:#2d6172;margin:12px 0}.editorial p{line-height:1.9;color:#5f6d69}.culture-grid{display:grid;grid-template-columns:1fr;gap:28px;margin:30px 0}.culture-grid article{border-top:2px solid #c5b68f;padding-top:18px;display:grid;grid-template-columns:200px minmax(0,1fr);gap:28px}.editorial h3{color:#365e58}.editorial a{color:#2d6172;text-decoration:underline;text-underline-offset:4px}.source-note{font-size:13px}.journey{margin-top:30px;background:#e9efe9;padding:24px;border-radius:12px}.journey nav{display:flex;flex-wrap:wrap;gap:18px}.journey h3{margin:0}@media(max-width:700px){.culture-grid{grid-template-columns:1fr;gap:12px}.culture-grid article{grid-template-columns:1fr;gap:0}.editorial{padding:32px 18px}.editorial h2{font-size:25px}}
+</style>

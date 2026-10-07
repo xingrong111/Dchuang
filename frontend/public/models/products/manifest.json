@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "units": "metres",
+  "manufacturingReady": false,
+  "assets": [
+    {
+      "id": "afu-desk",
+      "name": "afu-desk",
+      "kind": "product",
+      "file": "afu-desk.glb",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 4821508,
+      "sha256": "18308d92d9d244263880cc983fffbc0a905c25135f151785583dd112997ea997",
+      "meshes": 1,
+      "triangles": 50000,
+      "bounds": {
+        "min": [
+          -0.050164025806325604,
+          0,
+          -0.049968075228570295
+        ],
+        "max": [
+          0.050164025806325604,
+          0.10800000018998979,
+          0.049968075228570295
+        ]
+      },
+      "anchors": [],
+      "originalSha256": "7278914f572424a1d18e6c7c526205c359b93f604e94cce8beabd5cc7b41be85",
+      "originalFile": "6a878f80c343dbd5393f5dcc408b45a7.glb",
+      "generatedAt": "2026-10-03T11:54:42.978Z"
+    },
+    {
+      "id": "cat-book",
+      "name": "cat-book",
+      "kind": "product",
+      "file": "cat-book.glb",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 3957656,
+      "sha256": "ba051c1a90ecfb339dd2ef1b3ff8e7d37546e99ffb8204f3f3b41a6af820fbad",
+      "meshes": 1,
+      "triangles": 49980,
+      "bounds": {
+        "min": [
+          -0.14409826854490393,
+          0,
+          -0.06020558630617703
+        ],
+        "max": [
+          0.14409826854490393,
+          0.17100000381469727,
+          0.06020558630617703
+        ]
+      },
+      "anchors": [],
+      "originalSha256": "925a9f96b6947e93ce1f266caa3848549bb678dcfc890b63f52b0362ad005590",
+      "originalFile": "a3683c17dec1d17f15495d7613f6b492.glb",
+      "generatedAt": "2026-10-03T12:04:01.088Z"
+    },
+    {
+      "id": "notebook",
+      "name": "notebook",
+      "kind": "product",
+      "file": "notebook.glb",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 4141552,
+      "sha256": "bdd2e4a1d2d01b19d267e81adf98e32421d75aec749cff50faa28b5ad244eb1c",
+      "meshes": 1,
+      "triangles": 50010,
+      "bounds": {
+        "min": [
+          -0.08423955778764403,
+          0,
+          -0.017975738844634506
+        ],
+        "max": [
+          0.08423955778764403,
+          0.2289999963864684,
+          0.017975738844634506
+        ]
+      },
+      "anchors": [],
+      "originalSha256": "8edbc515d52f184e75d5daac7ac506595ed0de0df3d630a79e979a361863ac12",
+      "originalFile": "c2f569ae35715c07bbb40ff993ec0fa2.glb",
+      "generatedAt": "2026-10-03T12:05:56.896Z"
+    },
+    {
+      "id": "postcards",
+      "name": "postcards",
+      "kind": "product",
+      "file": "postcards.glb",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 4560544,
+      "sha256": "ffc3640e978aa84d7b91c33adb27de522ed7ad71730e4b63350e25de6e2ebd28",
+      "meshes": 1,
+      "triangles": 50000,
+      "bounds": {
+        "min": [
+          -0.12883831467036497,
+          0,
+          -0.02033724376041966
+        ],
+        "max": [
+          0.12883831467036497,
+          0.17525948105398131,
+          0.02033724376041966
+        ]
+      },
+      "anchors": [],
+      "originalSha256": "f6141eb7070051ee82a5ebefcfe4e31340c8a02f6aa995bacbe28834af5372f4",
+      "originalFile": "a7e01d02198ca3557b3a7df70bdaf3fd.glb",
+      "generatedAt": "2026-10-03T12:07:41.035Z"
+    },
+    {
+      "id": "kit",
+      "name": "kit",
+      "kind": "product",
+      "file": "kit.glb",
+      "source": "tencent-hunyuan-3.1",
+      "bytes": 4256048,
+      "sha256": "e99d3f7a69a8fb047a768793725bf0d8ca09f65d5feb383a14f72891f37d5618",
+      "meshes": 1,
+      "triangles": 49944,
+      "bounds": {
+        "min": [
+          -0.14509246706136167,
+          0,
+          -0.1267272264366425
+        ],
+        "max": [
+          0.14509246706136167,
+          0.09400000005215405,
+          0.1267272264366425
+        ]
+      },
+      "anchors": [],
+      "originalSha256": "d0afb41d422c1d426967a6e48dda8eb6dbe75e422facf830715cb1f5e0f96fe8",
+      "originalFile": "25a3459838a00832842609d719a0d7d1.glb",
+      "generatedAt": "2026-10-03T12:09:40.545Z"
+    }
+  ]
+}

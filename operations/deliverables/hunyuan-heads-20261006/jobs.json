@@ -1,0 +1,26 @@
+[
+  {
+    "id": "head-child-smile",
+    "name": "笑眼小孩",
+    "prompt": "独立6岁小男孩头部，完整后脑和短颈，无肩无身体。自然黑色短发，可爱圆脸，睁开圆圆大眼睛，深棕眼珠，双眼皮，微笑露出少量牙齿，柔和圆润鼻子，健康肤色。正常儿童五官比例，精致彩绘树脂文创雕塑，正面，左右对称，PBR材质，无文字。",
+    "creationId": "0a927d3e-16f8-43b8-943a-99e434a40ef1",
+    "submitted": true,
+    "assetId": "d4166859-325a-460f-9526-55a8d6c509c2",
+    "modelType": "text2ModelV3.1",
+    "originalFile": "head-child-smile.glb",
+    "downloaded": true,
+    "candidate": 0
+  },
+  {
+    "id": "head-man-sunny",
+    "name": "阳光男子",
+    "prompt": "独立25岁中国男子头部，完整后脑和短颈，无肩无身体。浓密黑色短发，清爽侧分，双眼皮丹凤眼，睁眼有神，深棕眼珠，自然浓眉，鼻梁挺直，轮廓清晰，阳光帅气的温暖微笑，健康肤色，无胡须。正常人物比例，精致彩绘树脂文创雕塑，正面，PBR材质，无文字。",
+    "creationId": "d85015d6-1eb4-4161-bfda-fb8c11aa68ff",
+    "submitted": true,
+    "assetId": "e68e9291-2c55-47d6-8b8a-7e58b6c18760",
+    "modelType": "text2ModelV3.1",
+    "originalFile": "head-man-sunny.glb",
+    "downloaded": true,
+    "candidate": 0
+  }
+]

@@ -2,31 +2,22 @@
   <div class="ai-workshop">
     <div class="content-wrapper">
       <div class="left-panel">
-        <div class="parts-panel">
-          <h3><el-icon><Box /></el-icon> 零件组件</h3>
-          <div class="parts-grid">
-            <div
-              v-for="part in parts"
-              :key="part.id"
-              class="part-item"
-              draggable="true"
-              @dragstart="onDragStart(part, $event)"
-              @dragend="onDragEnd"
-            >
-              <div class="part-icon" :style="{ backgroundColor: part.color }">
-                {{ part.icon }}
-              </div>
-              <p>{{ part.name }}</p>
-            </div>
-          </div>
+        <div class="parts-panel"><h3>混元文创模型</h3><p class="asset-note">现有展示模型，可载入后调整和导出。</p><el-select v-model="assetId" placeholder="选择文创模型" :disabled="assetLoading"><el-option v-for="item in editorial.products" :key="item.id" :value="item.id" :label="item.name" /></el-select><el-button :loading="assetLoading" @click="loadProductAsset">载入模型</el-button></div>
+        <div class="parts-panel part-library">
+          <h3>部件库</h3><p class="asset-note">头部与身体自动衔接；宠物和配件分别陈列在台座两侧，统一落地。再次选择同类部件可替换款式。</p>
+          <div v-if="!partCategory" class="category-grid"><button v-for="category in WORKSHOP_CATEGORIES" :key="category.id" @click="partCategory=category.id"><strong>{{ category.name }}</strong><span>{{ category.parts.length }} 款可选</span></button></div>
+          <template v-else><div class="category-header"><button @click="partCategory=''">‹ 全部分类</button><strong>{{ currentCategory.name }}</strong></div><p v-if="partCategory==='arms'&&bodyHasIntegratedArms" class="asset-note">所选身体已包含完整双臂，保留原有姿态，无需重复添加手臂。</p><div class="parts-grid"><article v-for="part in visibleParts" :key="part.id" class="part-item"><ModelPreview :load-object="previewLoaders.get(part.id)" class="part-preview"/><p>{{ part.name }}</p><button :disabled="partLoading||(partCategory==='arms'&&bodyHasIntegratedArms)" :draggable="!(partCategory==='arms'&&bodyHasIntegratedArms)" @click="addPart(part)" @dragstart="onDragStart(part,$event)" @dragend="onDragEnd">{{ loadingPart===part.id?'载入中…':(partCategory==='arms'&&bodyHasIntegratedArms?'身体已含双臂':'加入场景') }}</button></article></div></template>
         </div>
 
         <div class="params-panel">
           <h3><el-icon><Setting /></el-icon> 参数调整</h3>
           <el-form :model="modelParams" label-width="80px">
+            <el-form-item v-for="axis in ['x', 'y', 'z']" :key="axis" :label="`位置${axis.toUpperCase()}`">
+              <el-input-number v-model="modelParams.position[axis]" :min="-10" :max="10" :step="0.1" :precision="2" :disabled="selectedConnected" />
+            </el-form-item>
             <el-form-item label="缩放">
-              <el-slider v-model="modelParams.scale" :min="0.1" :max="3" :step="0.1" />
-              <span class="param-value">{{ modelParams.scale.toFixed(1) }}</span>
+              <el-slider v-model="modelParams.scale" :min="scaleBounds.min" :max="scaleBounds.max" :step="0.01" />
+              <span class="param-value">{{ modelParams.scale.toFixed(2) }}</span>
             </el-form-item>
             <el-form-item label="旋转X">
               <el-slider v-model="modelParams.rotation.x" :min="0" :max="360" />
@@ -41,7 +32,7 @@
               <span class="param-value">{{ modelParams.rotation.z }}°</span>
             </el-form-item>
             <el-form-item label="颜色">
-              <el-color-picker v-model="modelParams.color" show-alpha />
+              <el-color-picker v-model="modelParams.color" @change="applyColor" />
             </el-form-item>
           </el-form>
         </div>
@@ -58,35 +49,36 @@
           </el-button>
           <el-button @click="generateAI" class="action-btn ai-btn" :loading="isGenerating">
             <el-icon><MagicStick /></el-icon>
-            AI生成
+            描述创作
           </el-button>
           <el-button @click="exportModel" class="action-btn primary-btn">
             <el-icon><Download /></el-icon>
             导出模型
           </el-button>
+          <el-button @click="publishModel" class="action-btn" :loading="isPublishing">保存并发布作品</el-button>
         </div>
       </div>
 
-      <div class="canvas-container" ref="canvasContainer">
+      <div class="canvas-container" ref="canvasContainer" @dragover.prevent @drop.prevent="onDrop">
         <div class="canvas-overlay" v-if="isGenerating">
           <div class="generating-modal">
             <div class="loading-spinner">
               <el-icon :size="48" color="#4a90a4"><Loading /></el-icon>
             </div>
-            <h4>AI正在生成中...</h4>
+            <h4>正在制作模型…</h4>
             <el-progress :percentage="generateProgress" :stroke-width="10" />
             <p>{{ generateStatus }}</p>
           </div>
         </div>
         <div class="canvas-hint">
-          <span>🖱️ 拖动旋转 | 滚轮缩放</span>
+          <span>点击部件自动组装 · 点击模型选中 · 拖动旋转 · 双指或滚轮缩放</span>
         </div>
       </div>
     </div>
 
-    <el-dialog title="AI生成设置" v-model="showGenerateDialog" width="500px">
+    <el-dialog title="创作设置" v-model="showGenerateDialog" width="500px">
       <el-form :model="generateForm" label-width="100px">
-        <el-form-item label="生成类型">
+        <el-form-item label="创作类型">
           <el-select v-model="generateForm.type" placeholder="请选择">
             <el-option label="惠山泥人风格" value="huishan" />
             <el-option label="锡绣风格" value="xixiu" />
@@ -95,7 +87,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="主题描述">
-          <el-input v-model="generateForm.prompt" type="textarea" :rows="3" placeholder="描述你想生成的作品..." />
+          <el-input v-model="generateForm.prompt" type="textarea" :rows="3" placeholder="描述你想创作的作品..." />
         </el-form-item>
         <el-form-item label="细节程度">
           <el-slider v-model="generateForm.detail" :min="1" :max="5" :step="1" :marks="{ 1: '低', 3: '中', 5: '高' }" />
@@ -106,7 +98,7 @@
       </el-form>
       <template #footer>
         <el-button @click="showGenerateDialog = false">取消</el-button>
-        <el-button type="primary" @click="startGeneration" :disabled="!generateForm.type">开始生成</el-button>
+        <el-button type="primary" @click="startGeneration" :disabled="!generateForm.type">开始创作</el-button>
       </template>
     </el-dialog>
 
@@ -122,7 +114,7 @@
           <div class="format-item" @click="selectedFormat = 'obj'">
             <el-icon :size="32"><Folder /></el-icon>
             <span>OBJ格式</span>
-            <span class="format-desc">多平台兼容</span>
+            <span class="format-desc">几何网格（彩绘请用 GLB）</span>
           </div>
           <div class="format-item" @click="selectedFormat = 'png'">
             <el-icon :size="32"><Picture /></el-icon>
@@ -140,18 +132,32 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
+import { useRoute } from 'vue-router'
+import { useUserStore } from '@/store/userStore'
+import editorial from '@/content/editorial.json'
 import { ElMessage, ElProgress } from 'element-plus'
-import { Box, Setting, EditPen, RefreshLeft, Delete, MagicStick, Download, Loading, Folder, Picture } from '@element-plus/icons-vue'
+import { Setting, EditPen, RefreshLeft, Delete, MagicStick, Download, Loading, Folder, Picture } from '@element-plus/icons-vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'
+import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js'
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { generate3D, getTask } from '@/api/ai'
+import { getWorkDetail, uploadFile, saveWork } from '@/api/workshop'
+import { ElMessageBox } from 'element-plus'
+import { findConnection, attachPart, alignConnection, rebuildConnections, connectAvailableParts, releasePart } from '@/three/assembly'
+import { WORKSHOP_CATEGORIES, WORKSHOP_PARTS, createWorkshopPart } from '@/three/workshopParts'
+import ModelPreview from '@/components/ModelPreview.vue'
 
-const parts = [
-  { id: 1, name: '头部', icon: '🧠', color: '#ff6b6b' },
-  { id: 2, name: '身体', icon: '👕', color: '#4ecdc4' },
-  { id: 3, name: '手臂', icon: '💪', color: '#45b7d1' },
-  { id: 4, name: '腿部', icon: '🦵', color: '#96ceb4' },
-]
+// 部件库来自程序化建模工厂（含锚点连接接口 userData.attachPoints）
+const parts = WORKSHOP_PARTS
+const userStore = useUserStore()
+const partCategory=ref(''),loadingPart=ref(''),partLoading=ref(false)
+const currentCategory=computed(()=>WORKSHOP_CATEGORIES.find(c=>c.id===partCategory.value))
+const visibleParts=computed(()=>currentCategory.value?.parts||[])
+const previewLoaders=new Map(parts.map(part=>[part.id,()=>createWorkshopPart(part.id)]))
 
 const canvasContainer = ref(null)
 const showGenerateDialog = ref(false)
@@ -159,11 +165,18 @@ const showExportDialog = ref(false)
 const isGenerating = ref(false)
 const generateProgress = ref(0)
 const generateStatus = ref('')
+const isPublishing = ref(false)
+let generationTimer = null
+let resumeGenerationWait = null
+let generationCancelled = false
 const selectedFormat = ref('glb')
+const selectedConnected = ref(false)
+const bodyHasIntegratedArms = ref(false),scaleBounds=ref({min:.1,max:3})
 
 const modelParams = reactive({
   scale: 1,
   rotation: { x: 0, y: 0, z: 0 },
+  position: { x: 0, y: 0, z: 0 },
   color: '#4a90e2'
 })
 
@@ -178,19 +191,36 @@ let scene = null
 let camera = null
 let renderer = null
 let controls = null
-let platform = null
 let placedModels = []
+let modelsGroup = null
+let selectedModel = null
+let raycaster = null
+let pointer = null
 let animationId = null
+let resizeObserver = null
+let selectionBox = null
 
 const cleanup = () => {
+  resizeObserver?.disconnect()
+  generationCancelled = true
+  clearTimeout(generationTimer)
+  resumeGenerationWait?.()
+  resumeGenerationWait = null
+  clearModels(false)
+  scene?.environment?.dispose()
   if (animationId) {
     cancelAnimationFrame(animationId)
+  }
+  window.removeEventListener('keydown', onKeyDown)
+  if (renderer && renderer.domElement) {
+    renderer.domElement.removeEventListener('pointerdown', onCanvasPointerDown)
   }
   if (controls) {
     controls.dispose()
   }
   if (renderer) {
     renderer.dispose()
+    renderer.forceContextLoss()
     canvasContainer.value.innerHTML = ''
   }
   scene = null
@@ -206,23 +236,31 @@ const initScene = () => {
   const height = container.clientHeight
 
   scene = new THREE.Scene()
-  scene.background = new THREE.Color(0x111827)
+  scene.background = new THREE.Color(0xeee8dd)
 
   camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000)
   camera.position.set(5, 5, 10)
   camera.lookAt(0, 1, 0)
 
-  renderer = new THREE.WebGLRenderer({ antialias: true })
+  renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true })
+  renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.setSize(width, height)
-  renderer.setPixelRatio(window.devicePixelRatio)
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   renderer.shadowMap.enabled = true
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap
+  renderer.shadowMap.type = THREE.PCFShadowMap
   container.appendChild(renderer.domElement)
+
+  // PBR 环境反射：让釉面/金属材质呈现混元手办般的柔和光影
+  const pmrem = new THREE.PMREMGenerator(renderer)
+  const room = new RoomEnvironment()
+  scene.environment = pmrem.fromScene(room, 0.04).texture
+  room.dispose()
+  pmrem.dispose()
 
   controls = new OrbitControls(camera, renderer.domElement)
   controls.enableDamping = true
   controls.dampingFactor = 0.05
-  controls.autoRotate = true
+  controls.autoRotate = false
   controls.autoRotateSpeed = 1.0
   controls.enableZoom = true
   controls.maxPolarAngle = Math.PI / 2
@@ -232,7 +270,128 @@ const initScene = () => {
   createPlatform()
   addEnvironment()
   addSampleModels()
+  initInteraction()
   animate()
+}
+
+// ---- 选中拾取与部件组装交互 ----
+const initInteraction = () => {
+  raycaster = new THREE.Raycaster()
+  pointer = new THREE.Vector2()
+  renderer.domElement.addEventListener('pointerdown', onCanvasPointerDown)
+  window.addEventListener('keydown', onKeyDown)
+}
+
+const onCanvasPointerDown = (event) => {
+  if (!camera) return
+  const rect = renderer.domElement.getBoundingClientRect()
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+  raycaster.setFromCamera(pointer, camera)
+  const hits = raycaster.intersectObjects(modelsGroup ? modelsGroup.children : [], true)
+  if (hits.length > 0) {
+    // 从命中的 mesh 向上找到所属部件根节点（placedModels 中的直接子节点）
+    let obj = hits[0].object
+    while (obj && !placedModels.includes(obj)) obj = obj.parent
+    selectModel(obj)
+  } else {
+    selectModel(null)
+  }
+}
+
+const onKeyDown = (event) => {
+  if (event.target?.closest('input, textarea, [contenteditable="true"]')) return
+  if ((event.key === 'Delete' || event.key === 'Backspace') && selectedModel) {
+    event.preventDefault()
+    deleteSelected()
+  }
+}
+
+const selectModel = (model) => {
+  // 清除旧选中高亮
+  if (selectionBox) { selectionBox.removeFromParent(); selectionBox.geometry.dispose(); selectionBox.material.dispose(); selectionBox=null }
+  selectedModel = model
+  selectedConnected.value = !!model?.userData.connection
+  const fit=model?.userData.fittedScale
+  scaleBounds.value=model?.userData.category==='head'&&model.userData.connection&&fit?{min:fit*.9,max:fit*1.1}:{min:.1,max:3}
+  if (model) {
+    modelParams.position = { x: model.position.x, y: model.position.y, z: model.position.z }
+    modelParams.scale = model.scale.x
+    modelParams.rotation = { x: THREE.MathUtils.radToDeg(model.rotation.x), y: THREE.MathUtils.radToDeg(model.rotation.y), z: THREE.MathUtils.radToDeg(model.rotation.z) }
+    selectionBox=new THREE.BoxHelper(model,0xb6a06c)
+    selectionBox.material.transparent=true;selectionBox.material.opacity=.35
+    scene.add(selectionBox)
+  }
+}
+
+const deleteSelected = () => {
+  if (!selectedModel) return
+  const removed = new Set()
+  selectedModel.traverse(o => removed.add(o))
+  selectModel(null)
+  const root = [...removed][0]
+  disposeAsset(root)
+  root.removeFromParent()
+  placedModels = placedModels.filter(m => !removed.has(m))
+  bodyHasIntegratedArms.value=placedModels.some(m=>m.userData.integratedArms)
+  rebuildConnections(placedModels)
+  selectedModel = null
+  ElMessage.success('部件已删除，锚点已重置')
+}
+
+// 只改变当前部件，不穿过子部件的组装边界。
+const applyColor = (color) => {
+  if (!selectedModel || !color) return
+  const visit = (object) => {
+    if (object !== selectedModel && placedModels.includes(object)) return
+    if (object.isMesh) for (const material of [object.material].flat().filter(Boolean)) material.color?.set(color)
+    for (const child of object.children) visit(child)
+  }
+  visit(selectedModel)
+}
+
+
+
+/** 从部件库添加部件（点击/拖入），优先自动吸附到开放锚点 */
+const addPart = async (part) => {
+  if(partLoading.value||editorDisposed)return
+  if(part.category==='arms'&&bodyHasIntegratedArms.value){ElMessage.info('所选身体已包含双臂，保留原有完整姿态');return}
+  partLoading.value=true;loadingPart.value=part.id
+  let partObj
+  try{partObj=await createWorkshopPart(part.id)}catch{ElMessage.error('部件加载失败，请重试')}finally{partLoading.value=false;loadingPart.value=''}
+  if(!partObj)return
+  if(editorDisposed){disposeAsset(partObj);return}
+  if(partObj.userData.integratedArms){
+    for(const arms of placedModels.filter(m=>m.userData.category==='arms')){
+      selectModel(null);placedModels=releasePart(arms,placedModels,modelsGroup);disposeAsset(arms)
+    }
+  }
+  partObj.traverse(o => {
+    if (o.isMesh) { o.castShadow = true; o.receiveShadow = true }
+  })
+
+  const previous=placedModels.find(model=>model.userData.category===part.category)
+  if(previous){
+    selectModel(null)
+    placedModels=releasePart(previous,placedModels,modelsGroup)
+    disposeAsset(previous)
+  }
+  const snap = findConnection(partObj, placedModels)
+  if (snap) {
+    attachPart(partObj, snap)
+  } else {
+    partObj.position.set(0,0.11,0)
+    modelsGroup.add(partObj)
+  }
+
+  placedModels.push(partObj)
+  bodyHasIntegratedArms.value=placedModels.some(m=>m.userData.integratedArms)
+  connectAvailableParts(placedModels)
+  selectModel(partObj)
+  frameAssembly()
+  const connected=partObj.userData.connection||placedModels.some(model=>model.userData.connection?.targetUUID===partObj.uuid)
+  if(connected)ElMessage.success(`「${part.name}」已自动拼接`)
+  else ElMessage.info(`「${part.name}」已放置，添加配套部件后自动拼接`)
 }
 
 const addLights = () => {
@@ -267,7 +426,7 @@ const createPlatform = () => {
 
   const diskGeo = new THREE.CylinderGeometry(4, 4, 0.2, 64)
   const diskMat = new THREE.MeshStandardMaterial({
-    color: 0x2d3748,
+    color: 0xd8d1c5,
     roughness: 0.4,
     metalness: 0.1,
     transparent: true,
@@ -279,7 +438,7 @@ const createPlatform = () => {
   disk.castShadow = true
   platformGroup.add(disk)
 
-  const gridHelper = new THREE.GridHelper(8, 16, 0x4a90e2, 0x2c3e50)
+  const gridHelper = new THREE.GridHelper(8, 16, 0xa89a83, 0xc3b8a5)
   gridHelper.position.y = 0.11
   gridHelper.material.opacity = 0.3
   gridHelper.material.transparent = true
@@ -287,58 +446,25 @@ const createPlatform = () => {
 
   const ringGeo = new THREE.TorusGeometry(4.1, 0.05, 16, 100)
   const ringMat = new THREE.MeshStandardMaterial({
-    color: 0x4a90e2,
-    emissive: 0x1a3650,
-    emissiveIntensity: 0.5
+    color: 0xa99a80,
+    roughness: .9
   })
   const ring = new THREE.Mesh(ringGeo, ringMat)
   ring.rotation.x = Math.PI / 2
   ring.position.y = 0.15
   platformGroup.add(ring)
 
-  const centerGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.05, 16)
-  const centerMat = new THREE.MeshStandardMaterial({
-    color: 0x4a90e2,
-    emissive: 0x1a3650,
-    emissiveIntensity: 0.8
-  })
-  const center = new THREE.Mesh(centerGeo, centerMat)
-  center.position.y = 0.16
-  platformGroup.add(center)
 
-  platform = platformGroup
   scene.add(platformGroup)
 }
 
 const addSampleModels = () => {
-  const colors = [0xff6b6b, 0x4ecdc4, 0x45b7d1, 0x96ceb4]
-  const positions = [
-    { x: -2, z: -2 },
-    { x: 2, z: -2 },
-    { x: -2, z: 2 },
-    { x: 2, z: 2 }
-  ]
+  // 部件组装容器（导出时只导出该组）
+  modelsGroup = new THREE.Group()
+  modelsGroup.name = 'assembledParts'
+  scene.add(modelsGroup)
 
-  positions.forEach((pos, index) => {
-    const geometry = new THREE.BoxGeometry(0.8, 0.8, 0.8)
-    const material = new THREE.MeshStandardMaterial({
-      color: colors[index],
-      roughness: 0.3,
-      metalness: 0.1,
-      emissive: 0x000000
-    })
-    const cube = new THREE.Mesh(geometry, material)
-    cube.position.set(pos.x, 0.5, pos.z)
-    cube.castShadow = true
-    cube.receiveShadow = true
 
-    const edges = new THREE.EdgesGeometry(geometry)
-    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff }))
-    cube.add(line)
-
-    scene.add(cube)
-    placedModels.push(cube)
-  })
 }
 
 const addEnvironment = () => {
@@ -365,19 +491,25 @@ const addEnvironment = () => {
   scene.add(particles)
 }
 
+let editorActive = true
+onActivated(() => { editorActive = true })
+onDeactivated(() => { editorActive = false })
 const animate = () => {
   animationId = requestAnimationFrame(animate)
+  if (!editorActive) return
 
-  placedModels.forEach((model, index) => {
-    model.rotation.y += 0.002 * (index + 1)
-    model.scale.set(modelParams.scale, modelParams.scale, modelParams.scale)
-    model.rotation.x = (modelParams.rotation.x * Math.PI) / 180
-    model.rotation.y += 0.002 * (index + 1)
-    model.rotation.z = (modelParams.rotation.z * Math.PI) / 180
-  })
-
-  if (platform) {
-    platform.position.y = Math.sin(Date.now() * 0.001) * 0.05
+  // 参数面板仅作用于当前选中部件（不再强制所有部件统一变形/自转，以保持锚点对位）
+  if (selectedModel) {
+    if (!selectedModel.userData.connection) selectedModel.position.set(modelParams.position.x, modelParams.position.y, modelParams.position.z)
+    selectedModel.scale.setScalar(modelParams.scale)
+    selectedModel.rotation.set(
+      (modelParams.rotation.x * Math.PI) / 180,
+      (modelParams.rotation.y * Math.PI) / 180,
+      (modelParams.rotation.z * Math.PI) / 180
+    )
+    alignConnection(selectedModel)
+    for(const part of placedModels)if(['pet','accessory'].includes(part.userData.category))alignConnection(part)
+    selectionBox?.update()
   }
 
   controls.update()
@@ -385,93 +517,131 @@ const animate = () => {
 }
 
 const resetCamera = () => {
+  if (modelsGroup?.children.length) { frameAssembly(); return }
   camera.position.set(5, 5, 10)
   controls.target.set(0, 1, 0)
   controls.update()
   ElMessage.success('视角已重置')
 }
 
-const clearModels = () => {
-  placedModels.forEach(model => {
-    scene.remove(model)
-    model.geometry.dispose()
-    if (model.material) {
-      model.material.dispose()
-    }
-  })
+const frameAssembly = () => {
+  if (!modelsGroup?.children.length || !camera || !controls) return
+  modelsGroup.updateMatrixWorld(true)
+  const bounds=new THREE.Box3().setFromObject(modelsGroup),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3())
+  const halfFov=Math.tan(THREE.MathUtils.degToRad(camera.fov/2))
+  const distance=Math.max(size.y/(2*halfFov),size.x/(2*halfFov*camera.aspect),size.z)*1.35
+  camera.position.set(center.x+size.x*.16,center.y+size.y*.14,center.z+distance)
+  controls.target.copy(center);controls.update()
+}
+
+const clearModels = (notify = true) => {
+  if (modelsGroup) {
+    disposeAsset(modelsGroup)
+    modelsGroup.clear()
+  }
   placedModels = []
-  ElMessage.success('模型已清空')
+  bodyHasIntegratedArms.value=false
+  selectModel(null)
+  if (notify) ElMessage.success('模型已清空')
+}
+
+const assetId=ref('afu-desk'),assetLoading=ref(false),route=useRoute()
+let editorDisposed=false
+const disposeAsset=object=>object?.traverse(child=>{child.geometry?.dispose();for(const material of [child.material].flat().filter(Boolean)){for(const value of Object.values(material))if(value?.isTexture)value.dispose();material.dispose()}})
+const loadProductAsset=async()=>{
+ if(assetLoading.value)return
+ const product=editorial.products.find(item=>item.id===assetId.value)
+ if(!product)return
+ assetLoading.value=true
+ try{
+  const model=(await new GLTFLoader().loadAsync(import.meta.env.BASE_URL+product.model)).scene
+  if(editorDisposed){disposeAsset(model);return}
+  const bounds=new THREE.Box3().setFromObject(model),size=bounds.getSize(new THREE.Vector3()),factor=2.6/Math.max(size.x,size.y,size.z)
+  if(!Number.isFinite(factor)){disposeAsset(model);throw Error('模型没有有效几何体')}
+  model.position.sub(bounds.getCenter(new THREE.Vector3()))
+  const normalized=new THREE.Group();normalized.add(model);normalized.scale.setScalar(factor)
+  const wrap=new THREE.Group();wrap.name=product.name;wrap.add(normalized);wrap.position.y=size.y*factor/2+0.02
+  modelsGroup.add(wrap);placedModels.push(wrap);selectModel(wrap);ElMessage.success('混元文创模型已载入')
+ }catch{if(!editorDisposed)ElMessage.error('模型载入失败，请重试')}finally{assetLoading.value=false}
 }
 
 const generateAI = () => {
   showGenerateDialog.value = true
 }
 
-const startGeneration = () => {
+const startGeneration = async () => {
+  if (!generateForm.prompt.trim()) return ElMessage.warning('请输入作品描述')
   showGenerateDialog.value = false
   isGenerating.value = true
+  generationCancelled = false
   generateProgress.value = 0
-  generateStatus.value = '正在分析创意...'
-
-  const steps = [
-    { progress: 20, status: '正在生成基础模型...' },
-    { progress: 40, status: '正在添加纹理细节...' },
-    { progress: 60, status: '正在优化材质渲染...' },
-    { progress: 80, status: '正在进行风格转换...' },
-    { progress: 100, status: '生成完成！' }
-  ]
-
-  let stepIndex = 0
-  const interval = setInterval(() => {
-    if (stepIndex < steps.length) {
-      generateProgress.value = steps[stepIndex].progress
-      generateStatus.value = steps[stepIndex].status
-      stepIndex++
-    } else {
-      clearInterval(interval)
-      setTimeout(() => {
-        isGenerating.value = false
-        addGeneratedModel()
-        ElMessage.success('AI生成完成！')
-      }, 500)
+  generateStatus.value = '正在提交任务...'
+  try {
+    let task = (await generate3D({ task_type: 'text_to_3d', prompt: `${generateForm.type}：${generateForm.prompt.trim()}，惠山彩绘泥人，圆润造型，陶土材质`, params: { detail: generateForm.detail, color: generateForm.color } })).data
+    const deadline = Date.now() + 15 * 60 * 1000
+    while (!generationCancelled && ['PENDING', 'RUNNING'].includes(task.status)) {
+      if (Date.now() > deadline) throw new Error('等待超时，可在个人中心查看任务进度')
+      generateStatus.value = task.status === 'PENDING' ? '任务排队中...' : '云端正在制作模型...'
+      await new Promise(resolve => { resumeGenerationWait = resolve; generationTimer = setTimeout(resolve, 3000) })
+      resumeGenerationWait = null
+      if (generationCancelled) return
+      task = (await getTask(task.id)).data
     }
-  }, 500)
+    if (generationCancelled) return
+    if (task.status !== 'SUCCESS') throw new Error(task.error_message || '制作失败')
+    const work = task.artwork_id ? (await getWorkDetail(task.artwork_id)).data : null
+    const url = work?.model_url || task.result_url
+    if (!url) throw new Error('生成任务未返回模型地址')
+    const model = (await new GLTFLoader().loadAsync(url)).scene
+    if (generationCancelled) { disposeAsset(model); return }
+    const bounds = new THREE.Box3().setFromObject(model)
+    const height = bounds.getSize(new THREE.Vector3()).y
+    if (!height) throw new Error('模型没有有效几何体')
+    const wrap = new THREE.Group()
+    model.position.sub(bounds.getCenter(new THREE.Vector3()))
+    wrap.add(model)
+    wrap.scale.setScalar(2.6 / height)
+    wrap.position.set(0, 1.5, 0)
+    modelsGroup.add(wrap)
+    placedModels.push(wrap)
+    selectModel(wrap)
+    generateProgress.value = 100
+    ElMessage.success(task.provider === 'mock' ? '演示阿福模型已加载，使用预设模型展示' : '作品模型已加载')
+  } catch (error) {
+    if (!generationCancelled) ElMessage.error(error.message || '模型生成或加载失败，请在个人中心查看任务')
+  } finally { isGenerating.value = false }
 }
 
-const addGeneratedModel = () => {
-  const shapes = [
-    () => new THREE.SphereGeometry(0.8, 32, 32),
-    () => new THREE.TorusGeometry(0.6, 0.3, 16, 32),
-    () => new THREE.ConeGeometry(0.6, 1.2, 32),
-    () => new THREE.OctahedronGeometry(0.7),
-    () => new THREE.TetrahedronGeometry(0.8)
-  ]
+const serializeModel = () => new Promise((resolve, reject) => {
+  if (!modelsGroup?.children.length) return reject(new Error('请先添加模型'))
+  const selected = selectedModel
+  selectModel(null)
+  new GLTFExporter().parse(modelsGroup, result => {
+    selectModel(selected)
+    resolve(new Blob([result], { type: 'model/gltf-binary' }))
+  }, error => { selectModel(selected); reject(error) }, { binary: true })
+})
 
-  const randomShape = shapes[Math.floor(Math.random() * shapes.length)]
-  const geometry = randomShape()
-  const material = new THREE.MeshStandardMaterial({
-    color: generateForm.color || modelParams.color,
-    roughness: 0.3,
-    metalness: 0.2,
-    emissive: new THREE.Color(generateForm.color || modelParams.color).multiplyScalar(0.2),
-    emissiveIntensity: 0.5
-  })
-
-  const model = new THREE.Mesh(geometry, material)
-  model.position.set(
-    (Math.random() - 0.5) * 4,
-    1,
-    (Math.random() - 0.5) * 4
-  )
-  model.castShadow = true
-  model.receiveShadow = true
-
-  const edges = new THREE.EdgesGeometry(geometry)
-  const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff }))
-  model.add(line)
-
-  scene.add(model)
-  placedModels.push(model)
+const publishModel = async () => {
+  if (isPublishing.value) return
+  if (!userStore.user?.token) return ElMessage.warning('请先登录后发布作品，当前组装可直接导出保存')
+  try {
+    const { value: title } = await ElMessageBox.prompt('请输入作品名称', '发布作品', { inputValidator: v => !!v?.trim() && v.trim().length <= 200 })
+    isPublishing.value = true
+    const blob = await serializeModel()
+    const upload = await uploadFile(new File([blob], 'creation.glb', { type: 'model/gltf-binary' }))
+    const selection = selectedModel
+    selectModel(null)
+    renderer.render(scene, camera)
+    const thumbnailBlob = await new Promise(resolve => renderer.domElement.toBlob(resolve, 'image/png'))
+    selectModel(selection)
+    if (!thumbnailBlob) throw new Error('无法生成作品缩略图')
+    const thumbnail = await uploadFile(new File([thumbnailBlob], 'preview.png', { type: 'image/png' }))
+    await saveWork({ title: title.trim(), model_url: upload.data.url, thumbnail: thumbnail.data.url, tags: ['惠山泥人'], is_public: true })
+    ElMessage.success('作品已保存到社区和个人中心')
+  } catch (error) {
+    if (!['cancel', 'close'].includes(error)) ElMessage.error(error.message || '作品保存失败')
+  } finally { isPublishing.value = false }
 }
 
 const exportModel = () => {
@@ -479,8 +649,54 @@ const exportModel = () => {
 }
 
 const confirmExport = () => {
+  if (selectedFormat.value === 'glb') {
+    exportAsGlb()
+  } else if (selectedFormat.value === 'png') {
+    exportAsPng()
+  } else {
+    if (!modelsGroup?.children.length) return ElMessage.warning('请先添加模型')
+    modelsGroup.updateMatrixWorld(true)
+    const url = URL.createObjectURL(new Blob([new OBJExporter().parse(modelsGroup)], { type: 'text/plain' }))
+    const link = document.createElement('a')
+    link.href = url; link.download = 'huishan-creation.obj'; link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    ElMessage.success('OBJ 网格已导出；保留彩绘与材质请使用 GLB')
+  }
   showExportDialog.value = false
-  ElMessage.success(`模型已导出为${selectedFormat.value}格式`)
+}
+
+const exportAsGlb = async () => {
+  if (!modelsGroup || modelsGroup.children.length === 0) {
+    ElMessage.warning('场景中没有可导出的部件')
+    return
+  }
+  try {
+      const blob = await serializeModel()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'huishan-creation.glb'
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      ElMessage.success('GLB 模型已导出，可在 共创页上传或保存作品')
+  } catch (err) {
+      console.error('GLB 导出失败:', err)
+      ElMessage.error('导出失败，请重试')
+  }
+}
+
+const exportAsPng = () => {
+  // 强制渲染一帧后截图
+  const selection = selectedModel
+  selectModel(null)
+  renderer.render(scene, camera)
+  const url = renderer.domElement.toDataURL('image/png')
+  selectModel(selection)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'huishan-creation.png'
+  a.click()
+  ElMessage.success('PNG 截图已导出')
 }
 
 const onDragStart = (part, event) => {
@@ -489,13 +705,21 @@ const onDragStart = (part, event) => {
 }
 
 const onDragEnd = () => {}
+const onDrop = (event) => {
+  const part = parts.find(p => p.id === event.dataTransfer.getData('partId'))
+  if (part) addPart(part)
+}
 
 onMounted(() => {
   initScene()
+  if(editorial.products.some(item=>item.id===route.query.modelAsset)){assetId.value=route.query.modelAsset;loadProductAsset()}
+  resizeObserver = new ResizeObserver(onWindowResize)
+  resizeObserver.observe(canvasContainer.value)
   window.addEventListener('resize', onWindowResize)
 })
 
 onUnmounted(() => {
+  editorDisposed=true
   window.removeEventListener('resize', onWindowResize)
   cleanup()
 })
@@ -507,13 +731,18 @@ const onWindowResize = () => {
   const width = container.clientWidth
   const height = container.clientHeight
 
+  if (!width || !height) return
+
   camera.aspect = width / height
   camera.updateProjectionMatrix()
   renderer.setSize(width, height)
+  frameAssembly()
 }
 </script>
 
 <style scoped>
+.category-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.category-grid button{display:grid;gap:10px;padding:22px 10px;border:1px solid #ddd3bd;border-radius:12px;background:#faf7f0;color:#365e58;cursor:pointer}.category-grid span{font-size:12px;color:#776e5f}.category-header{display:flex;gap:16px;align-items:center;margin-bottom:16px}.category-header button,.part-item>button{border:1px solid #d3c5ab;background:#fffdf5;color:#365e58;border-radius:8px;padding:8px;cursor:pointer}.part-library .parts-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.part-library .part-item{padding:6px;cursor:default}.part-library .part-item:hover{transform:none}.part-preview{height:145px!important;border-radius:8px}.part-preview :deep(.gesture-hint),.part-preview :deep(.reset-view){display:none}.part-library .part-item p{font-size:12px}.part-item>button{font-size:12px;width:100%}
+.asset-note{font-size:12px;color:#766b5e;line-height:1.6}
 .ai-workshop {
   height: 100%;
   width: 100%;
@@ -717,4 +946,17 @@ const onWindowResize = () => {
   height: 100% !important;
   outline: none;
 }
+
+@media (max-width: 768px) {
+  .ai-workshop { height: auto; min-height: 900px; }
+  .content-wrapper { flex-direction: column; overflow: visible; }
+  .canvas-container { order: -1; width: 100%; flex: none; height: 420px; min-height: 420px; }
+  .left-panel { width: 100%; overflow: visible; border-right: 0; }
+  .parts-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .parts-panel, .params-panel, .actions-panel { padding: 16px; }
+  .part-item { padding: 10px 4px; }
+  .part-icon { width: 40px; height: 40px; }
+  .canvas-hint { left: 10px; right: 10px; bottom: 12px; padding: 8px; }
+}
 </style>
+

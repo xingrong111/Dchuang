@@ -1,0 +1,68 @@
+[
+  {
+    "id": "showcase-spring-child",
+    "title": "莲生福意 · 阿福摆件",
+    "description": "以惠山阿福的圆润轮廓为灵感，微笑童子盘坐莲台，怀抱小瑞兽。朱红衣袍与青绿裤装形成清晰配色，莲瓣与团花细节让祝福题材适合桌面陈列。 以完整三维造型呈现，支持旋转观察。这是非遗主题文创演绎。",
+    "tags": [
+      "惠山泥人",
+      "民间彩塑"
+    ],
+    "thumbnail": "/content/wuxi-afu-lotus.png",
+    "model_url": "/models/workshop/wuxi-afu-lotus.glb"
+  },
+  {
+    "id": "showcase-sunny-scholar",
+    "title": "双福临门 · 惠山童子",
+    "description": "以惠山泥人的吉祥人物题材为灵感，两位微笑童子并肩捧莲。两个人物均有完整身体与自然站姿，红绿衣装互相呼应，作为成对摆件表达相伴的日常祝愿。 以完整三维造型呈现，支持旋转观察。这是非遗主题文创演绎。",
+    "tags": [
+      "惠山泥人",
+      "民间彩塑"
+    ],
+    "thumbnail": "/content/wuxi-afu-pair.png",
+    "model_url": "/models/workshop/wuxi-afu-pair.glb"
+  },
+  {
+    "id": "showcase-opera-stage",
+    "title": "蚕猫守福 · 彩塑猫摆件",
+    "description": "取材于惠山泥人蚕猫题材，保留圆润坐姿、竖耳与醒目的眼睛，加入花纹、铃铛和木色台座。完整四足与尾巴让形象从各个角度都便于观察，适合书桌或书架的装饰方向。 以完整三维造型呈现，支持旋转观察。这是非遗主题文创演绎。",
+    "tags": [
+      "惠山泥人",
+      "民间彩塑"
+    ],
+    "thumbnail": "/content/wuxi-canmao.png",
+    "model_url": "/models/workshop/wuxi-canmao.glb"
+  },
+  {
+    "id": "showcase-longevity",
+    "title": "曲韵青衣 · 戏文人物",
+    "description": "以惠山手捏戏文的人物表达为灵感，青衣人物以舒展水袖组织姿态，青蓝服饰配合金色云纹与小台座。头饰、面部和衣袖共同形成视觉中心，不对应特定传统作品或戏曲角色。 以完整三维造型呈现，支持旋转观察。这是非遗主题文创演绎。",
+    "tags": [
+      "惠山泥人",
+      "戏文人物"
+    ],
+    "thumbnail": "/content/wuxi-opera-lady.png",
+    "model_url": "/models/workshop/wuxi-opera-lady.glb"
+  },
+  {
+    "id": "showcase-young-guard",
+    "title": "福寿绵长 · 寿星摆件",
+    "description": "以惠山泥人的寿星题材为灵感，慈祥长者手捧寿桃、拄拐而立。红绿长袍与浅色台座相互衬托，面部、白须和手势保持统一造型，表达温暖的祝愿。 以完整三维造型呈现，支持旋转观察。这是非遗主题文创演绎。",
+    "tags": [
+      "惠山泥人",
+      "民间彩塑"
+    ],
+    "thumbnail": "/content/wuxi-shouxing.png",
+    "model_url": "/models/workshop/wuxi-shouxing.glb"
+  },
+  {
+    "id": "showcase-child-reading",
+    "title": "团福 · 桌面阿福",
+    "description": "以无锡惠山阿福题材为灵感，以完整人物和台座形成圆润的桌面摆件，朱红衣袍与青绿装饰呼应传统彩塑的色彩趣味。数字文创演绎，支持旋转观察。",
+    "tags": [
+      "惠山泥人",
+      "阿福文创"
+    ],
+    "thumbnail": "/content/afu-desk.png",
+    "model_url": "/models/products/afu-desk.glb"
+  }
+]

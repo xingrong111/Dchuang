@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-03",
+  "mode": "built-in image_gen",
+  "prompts": [
+    {
+      "id": "collection-studio",
+      "prompt": "Use case: product-mockup. Create a photorealistic professional product photography hero for an original Huishan clay figurine inspired cultural merchandise collection, landscape 1536x1024. Five plausible real-life objects arranged on warm cream studio plinths: a 10cm hand-painted round smiling seated Afu figurine with black double buns, vermilion robe with teal and muted gold floral details, holding a little lion; a pair of small yellow painted silkworm-cat ceramic ornaments affixed to teal L-shaped metal bookends with 3 books between; a teal A5 linen hardback notebook with a printed folk-art Afu motif; four thick cream postcards with original folk Afu and cat illustrations; an open kraft DIY gift box with an unpainted cream Afu blank, two paintbrushes, six sealed paint pots and instruction cards. Real ceramic matte glaze, subtle hand brush strokes, metal folded edges, paper thickness, linen grain, natural shadows, photography not flat vector, tasteful coherent contemporary museum gift shop products. All products entirely visible, no logos, no captions, no readable text, no prices, no watermarks. High detail 50mm lens, three-quarter view, ivory background, soft window lighting. This is a conceptual synthetic design visualization, not documentation of manufactured products."
+    },
+    {
+      "id": "afu-desk",
+      "prompt": "Use case: product-mockup. Reference image: visual design and material reference only. Generate ONE separate landscape professional catalog photo of this product from the reference collection: Only the seated red robe Afu figurine with little lion and ivory round base, frontal three-quarter view. Preserve the reference design family, plausible physical dimensions and realistic ceramic/paper/metal materials. Neutral warm ivory studio backdrop, soft shadows, 50mm perspective, high detail, plenty of edge margin, product entirely visible. Remove ALL other product categories from the shot. Photorealistic synthetic product design visualization, NOT flat vector or toy-like CGI. No text, no logos, no captions, no watermark. 1536x1024.",
+      "reference": "collection-studio.png"
+    },
+    {
+      "id": "cat-book",
+      "prompt": "Use case: product-mockup. Reference image: visual design and material reference only. Generate ONE separate landscape professional catalog photo of this product from the reference collection: Only a matching pair of yellow ceramic silkworm cat bookends fixed on teal L metal bases, with 3 plain books between them, all fully visible. Preserve the reference design family, plausible physical dimensions and realistic ceramic/paper/metal materials. Neutral warm ivory studio backdrop, soft shadows, 50mm perspective, high detail, plenty of edge margin, product entirely visible. Remove ALL other product categories from the shot. Photorealistic synthetic product design visualization, NOT flat vector or toy-like CGI. No text, no logos, no captions, no watermark. 1536x1024.",
+      "reference": "collection-studio.png"
+    },
+    {
+      "id": "notebook",
+      "prompt": "Use case: product-mockup. Reference image: visual design and material reference only. Generate ONE separate landscape professional catalog photo of this product from the reference collection: Only the teal A5 linen hardback notebook with the Afu illustration, standing three-quarter view showing binding, page edges and fabric texture. Preserve the reference design family, plausible physical dimensions and realistic ceramic/paper/metal materials. Neutral warm ivory studio backdrop, soft shadows, 50mm perspective, high detail, plenty of edge margin, product entirely visible. Remove ALL other product categories from the shot. Photorealistic synthetic product design visualization, NOT flat vector or toy-like CGI. No text, no logos, no captions, no watermark. 1536x1024.",
+      "reference": "collection-studio.png"
+    },
+    {
+      "id": "postcards",
+      "prompt": "Use case: product-mockup. Reference image: visual design and material reference only. Generate ONE separate landscape professional catalog photo of this product from the reference collection: Only four original Afu and silkworm cat art postcards in an attractive flat lay, thick ivory paper, physically separate cards. Preserve the reference design family, plausible physical dimensions and realistic ceramic/paper/metal materials. Neutral warm ivory studio backdrop, soft shadows, 50mm perspective, high detail, plenty of edge margin, product entirely visible. Remove ALL other product categories from the shot. Photorealistic synthetic product design visualization, NOT flat vector or toy-like CGI. No text, no logos, no captions, no watermark. 1536x1024.",
+      "reference": "collection-studio.png"
+    },
+    {
+      "id": "kit",
+      "prompt": "Use case: product-mockup. Reference image: visual design and material reference only. Generate ONE separate landscape professional catalog photo of this product from the reference collection: Only the open kraft painting kit, ivory unpainted Afu blank, exactly six sealed paint pots, two brushes, printed instruction cards, everything neatly fits inside divided compartments. Preserve the reference design family, plausible physical dimensions and realistic ceramic/paper/metal materials. Neutral warm ivory studio backdrop, soft shadows, 50mm perspective, high detail, plenty of edge margin, product entirely visible. Remove ALL other product categories from the shot. Photorealistic synthetic product design visualization, NOT flat vector or toy-like CGI. No text, no logos, no captions, no watermark. 1536x1024.",
+      "reference": "collection-studio.png"
+    }
+  ]
+}

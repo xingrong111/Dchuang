@@ -1,0 +1,47 @@
+# ============================================================
+# 智绘锡承 - 后端 Python 依赖
+# 项目: 基于多模态的非遗3D模型生成平台
+# 开发分支: B_houduan
+#
+# 版本说明:
+# - 项目开发规范文档 v1.0 要求 Python 3.9 - 3.11
+# - 本机实际开发环境为 Python 3.13.14（高于规范要求，向下兼容）
+# - 以下版本范围均兼容 Python 3.9+，请勿使用过旧版本
+# ============================================================
+
+# --- Web 框架 ---
+Flask>=3.0.0,<4.0.0
+waitress>=3.0.0,<4.0.0
+
+# --- ORM 与数据库 ---
+# SQLAlchemy 2.x + Flask-SQLAlchemy 3.x（规范文档 4.1.1）
+Flask-SQLAlchemy>=3.1.0,<4.0.0
+# 数据库迁移（规范文档 4.1.1: flask db migrate / upgrade）
+Flask-Migrate>=4.0.0,<5.0.0
+# MySQL 驱动（规范文档 4.1.2: mysql+pymysql）
+PyMySQL>=1.1.0,<2.0.0
+
+# --- 跨域 ---
+# 规范文档 4.1.1: flask_cors
+Flask-CORS>=4.0.0,<7.0.0
+
+# --- 配置加载 ---
+# 读取 .env 文件（敏感配置全部来自环境变量）
+python-dotenv>=1.0.0,<2.0.0
+
+# --- 密码哈希（Werkzeug 随 Flask 安装，此处显式声明） ---
+Werkzeug>=3.0.0,<4.0.0
+
+# --- JWT 认证（Flask-JWT-Extended） ---
+Flask-JWT-Extended>=4.6.0,<5.0.0
+
+# --- HTTP 客户端（GLM 多模态使用 requests，不使用 zhipuai SDK） ---
+requests>=2.31.0,<3.0.0
+
+# --- 腾讯云 SDK（混元 AI3D，TC3 签名由 SDK 内置） ---
+tencentcloud-sdk-python>=3.1.166,<4.0.0
+
+# --- 可选基础设施（当前未安装） ---
+# Redis 缓存: redis>=5.0.0
+# API 限流: Flask-Limiter>=3.5.0
+# 测试（规范文档 第五章）: pytest>=8.0.0

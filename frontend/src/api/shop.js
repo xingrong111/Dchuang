@@ -1,4 +1,6 @@
 import request from './index';
+export const cancelOrder = (id) => request.post(`/shop/orders/${id}/cancel`);
+export const updateCart = (id, quantity) => request.put(`/shop/cart/${id}`, { quantity });
 
 export const getProducts = (params) => {
   return request.get('/shop/products', { params });

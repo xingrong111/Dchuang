@@ -2,6 +2,6 @@ export default [
   {
     path: '/museum',
     name: 'museum',
-    component: () => import('@/views/Museum/MuseumView.vue')
+    component: () => import('@/views/Museum/EditorialMuseumView.vue')
   }
 ];

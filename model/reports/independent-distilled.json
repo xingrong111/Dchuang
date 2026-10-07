@@ -1,0 +1,313 @@
+{
+  "protocol": "预先固定、去重后的独立测试集；仅评估，不用于选模",
+  "checkpoint": "fold_1.pth",
+  "checkpoint_epoch": 3,
+  "architecture": "compact",
+  "parameters": 167967,
+  "cpu_single_image_ms": 1.775065000038012,
+  "primary_labels": [
+    "传统喜庆",
+    "可爱稚趣",
+    "奇幻神话",
+    "经典戏文",
+    "风俗雅致"
+  ],
+  "secondary_tags": [
+    "吉祥纹饰",
+    "大红",
+    "神态传神",
+    "简约线条",
+    "金饰",
+    "市井人物",
+    "动态",
+    "细腻肌理",
+    "浅绛色",
+    "山水",
+    "无装饰",
+    "单色釉",
+    "花鸟",
+    "纹饰精美",
+    "米白色",
+    "极简造型",
+    "华丽",
+    "色彩鲜艳",
+    "动物元素（可爱）",
+    "文人",
+    "戏文故事",
+    "戏文角色",
+    "喜庆",
+    "色彩素雅",
+    "形态优美",
+    "棕色"
+  ],
+  "sample_count": 23,
+  "accuracy": 0.43478260869565216,
+  "balanced_accuracy": 0.3466666666666667,
+  "macro_f1": 0.3084033613445378,
+  "multilabel_micro_f1": 0.055384615384615386,
+  "multilabel_macro_f1": 0.03088319088319088,
+  "per_secondary_tag": {
+    "吉祥纹饰": {
+      "precision": 0.13636363636363635,
+      "recall": 1.0,
+      "f1-score": 0.24,
+      "support": 3.0
+    },
+    "大红": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "神态传神": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 3.0
+    },
+    "简约线条": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "金饰": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "市井人物": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "动态": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 3.0
+    },
+    "细腻肌理": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "浅绛色": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "山水": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "无装饰": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "单色釉": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "花鸟": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "纹饰精美": {
+      "precision": 0.17391304347826086,
+      "recall": 1.0,
+      "f1-score": 0.2962962962962963,
+      "support": 4.0
+    },
+    "米白色": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "极简造型": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "华丽": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "色彩鲜艳": {
+      "precision": 0.16666666666666666,
+      "recall": 0.6666666666666666,
+      "f1-score": 0.26666666666666666,
+      "support": 3.0
+    },
+    "动物元素（可爱）": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 5.0
+    },
+    "文人": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "戏文故事": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 3.0
+    },
+    "戏文角色": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 2.0
+    },
+    "喜庆": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "色彩素雅": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "形态优美": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 2.0
+    },
+    "棕色": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "micro avg": {
+      "precision": 0.030508474576271188,
+      "recall": 0.3,
+      "f1-score": 0.055384615384615386,
+      "support": 30.0
+    },
+    "macro avg": {
+      "precision": 0.018343974865713993,
+      "recall": 0.10256410256410256,
+      "f1-score": 0.03088319088319088,
+      "support": 30.0
+    },
+    "weighted avg": {
+      "precision": 0.05349143610013175,
+      "recall": 0.3,
+      "f1-score": 0.09017283950617284,
+      "support": 30.0
+    },
+    "samples avg": {
+      "precision": 0.03258770215291955,
+      "recall": 0.34782608695652173,
+      "f1-score": 0.0592986723421506,
+      "support": 30.0
+    }
+  },
+  "per_class": {
+    "传统喜庆": {
+      "precision": 0.5,
+      "recall": 0.6666666666666666,
+      "f1-score": 0.5714285714285714,
+      "support": 6.0
+    },
+    "可爱稚趣": {
+      "precision": 0.36363636363636365,
+      "recall": 0.6666666666666666,
+      "f1-score": 0.47058823529411764,
+      "support": 6.0
+    },
+    "奇幻神话": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 2.0
+    },
+    "经典戏文": {
+      "precision": 0.6666666666666666,
+      "recall": 0.4,
+      "f1-score": 0.5,
+      "support": 5.0
+    },
+    "风俗雅致": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 4.0
+    },
+    "accuracy": 0.43478260869565216,
+    "macro avg": {
+      "precision": 0.30606060606060603,
+      "recall": 0.3466666666666667,
+      "f1-score": 0.3084033613445378,
+      "support": 23.0
+    },
+    "weighted avg": {
+      "precision": 0.3702239789196311,
+      "recall": 0.43478260869565216,
+      "f1-score": 0.38052612349287535,
+      "support": 23.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      4,
+      1,
+      0,
+      0,
+      1
+    ],
+    [
+      2,
+      4,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      2,
+      0,
+      0,
+      0
+    ],
+    [
+      1,
+      2,
+      0,
+      2,
+      0
+    ],
+    [
+      1,
+      2,
+      0,
+      1,
+      0
+    ]
+  ]
+}

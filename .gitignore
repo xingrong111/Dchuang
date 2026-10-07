@@ -30,9 +30,27 @@ pnpm-debug.log*
 Thumbs.db
 
 # Env
+.env
 .env.local
 .env.*.local
 *.local
+
+# Backend 本地数据
+backend/app/static/uploads/
+**/__pycache__/
+**/.pytest_cache/
+**/.venv/
+frontend/.asset-review-browser*/
+frontend/.browser-audit*/
+**/.acceptance/
+backend/.env
+backend/dev.db
+backend/*.sqlite3
+backend/backups/
+backend/.runtime/
+model/runs/
+model/blender-sources/
+operations/responses/
 
 # Cache
 .eslintcache
@@ -41,3 +59,21 @@ Thumbs.db
 # Temp
 tmp/
 temp/
+
+frontend/.browser-hunyuan-login/
+/.acceptance-*/
+/.browser-assembly-qa/
+
+# Local inspection artifacts and browser profiles
+**/.browser*/
+**/.asset-review-browser*/
+**/reports/browser/
+backend/reports/
+/.compatibility-edits.py
+/.content-integration.py
+/.frontend-edits.py
+/.implementation-edits.py
+/.preview-edits.py
+/.test-edits.py
+frontend/model-library-audit*.png
+operations/review-upload/
