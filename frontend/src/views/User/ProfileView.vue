@@ -122,7 +122,7 @@
         </el-tab-pane>
 
         <el-tab-pane label="历史订单" name="orders">
-          <p>当前文创页面为概念展示，不提供购买。此处保留历史演示订单记录。</p>
+          <p>暂未开售的文创可加入购物车，当前不能购买；已提交的订单可在这里查看。</p>
           <div class="tab-toolbar">
             <el-select v-model="ordersFilter" placeholder="订单状态" style="width: 120px;">
               <el-option label="全部" value="all" />

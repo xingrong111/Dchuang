@@ -11,7 +11,7 @@
       </el-button>
     </div>
 
-    <p class="commerce-note">当前目录包含原创文创设计，尚未实物销售。设计条目可搜索、浏览和收藏；正式上架且有库存的商品才能加入购物车。<RouterLink to="/shop/designs">阅读设计故事与查看三维模型 ↗</RouterLink></p>
+    <p class="commerce-note">文创产品可加入购物车，暂未开售的产品不能购买或结算。<RouterLink to="/shop/designs">阅读文创故事与查看三维模型 ↗</RouterLink></p>
     <div class="toolbar">
       <div class="search-bar">
         <el-input
@@ -115,7 +115,7 @@
               <div class="product-actions">
                 <el-button size="small" @click="viewProductDetail(product)">详情</el-button><el-button size="small" :disabled="favoriteBusy" @click="favorite(product)">{{ favoriteIds.has(product.id)?'已收藏':'收藏' }}</el-button>
                 <el-button v-if="product.specs?.display_only" type="primary" size="small" @click="openDesign(product)">查看模型</el-button>
-                <el-button v-else type="primary" size="small" @click="addToCart(product)" :disabled="cartStore.busy || product.stock < 1">
+                <el-button type="primary" size="small" @click="addToCart(product)" :disabled="cartStore.busy || (!product.specs?.display_only && product.stock < 1)">
                   <el-icon><Plus /></el-icon>
                   加入购物车
                 </el-button>
@@ -156,7 +156,7 @@
                 <li v-for="(spec, key) in publicSpecs(selectedProduct)" :key="key">{{ key }}: {{ spec }}</li>
               </ul>
             </div>
-            <div v-if="selectedProduct.specs?.display_only" class="detail-actions"><el-button type="primary" @click="openDesign(selectedProduct)">查看设计与三维模型</el-button></div>
+            <div v-if="selectedProduct.specs?.display_only" class="detail-actions"><el-button @click="openDesign(selectedProduct)">查看三维模型</el-button><el-button type="primary" :disabled="cartStore.busy" @click="addToCart(selectedProduct)">加入购物车</el-button><el-button @click="ElMessage.info('暂未开售，当前不能购买')">立即购买</el-button></div>
             <div v-else class="detail-actions">
               <el-input-number v-model="buyQuantity" :min="1" :max="Math.max(1, Math.min(99, selectedProduct.stock))" style="width: 100px;" />
               <el-button type="primary" @click="addToCart(selectedProduct, buyQuantity)" :disabled="cartStore.busy || selectedProduct.stock < 1" size="large">
@@ -204,13 +204,13 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column prop="price" label="单价" width="120" />
+          <el-table-column label="单价" width="120"><template #default="scope">{{ scope.row.specs?.display_only ? '暂未开售' : '¥'+scope.row.price.toFixed(2) }}</template></el-table-column>
           <el-table-column label="数量" width="120">
             <template #default="scope">
               <el-input-number
                 :model-value="scope.row.quantity"
                 :min="1"
-                :max="Math.min(99, scope.row.stock)"
+                :max="scope.row.specs?.display_only ? 99 : Math.min(99, scope.row.stock)"
                 :disabled="cartStore.busy"
                 @change="updateQuantity(scope.row.id, $event)"
               />
@@ -218,7 +218,7 @@
           </el-table-column>
           <el-table-column label="小计" width="120">
             <template #default="scope">
-              <span class="subtotal">{{ (scope.row.price * scope.row.quantity).toFixed(2) }}</span>
+              <span class="subtotal">{{ scope.row.specs?.display_only ? '暂不可购买' : (scope.row.price * scope.row.quantity).toFixed(2) }}</span>
             </template>
           </el-table-column>
           <el-table-column label="操作" width="100">
@@ -230,7 +230,7 @@
         <div class="cart-summary">
           <div class="cart-total">
             <span>共 {{ cartStore.totalCount }} 件商品</span>
-            <span>总计: <strong>{{ cartStore.totalPrice.toFixed(2) }}</strong></span>
+            <span v-if="cartStore.items.every(item=>item.specs?.display_only)">暂未开售，不能购买</span><span v-else>已开售商品金额: <strong>{{ cartStore.totalPrice.toFixed(2) }}</strong></span>
           </div>
           <el-button type="primary" @click="checkout" size="large">去结算</el-button>
         </div>
@@ -395,12 +395,13 @@ const addToCart = async (product, quantity = 1) => {
   if (!userStore.user?.token) return ElMessage.warning('请先登录')
   try {
     if (await cartStore.addToCart(product, quantity)) {
-      ElMessage.success('已加入购物车'); showDetailDialog.value = false; buyQuantity.value = 1
+      ElMessage.success(product.specs?.display_only ? '已加入购物车，该产品暂未开售，不能购买' : '已加入购物车'); showDetailDialog.value = false; buyQuantity.value = 1
     }
   } catch { /* 拦截器显示服务端错误 */ }
 }
 
 const buyNow = (product) => {
+  if(product.specs?.display_only)return ElMessage.info('暂未开售，当前不能购买')
   if (!userStore.user?.token) return ElMessage.warning('请先登录')
   checkoutItems.value = [{ ...product, quantity: buyQuantity.value }]
   requestKey = null
@@ -415,6 +416,7 @@ const updateQuantity = async (productId, quantity) => {
   try { await cartStore.updateQuantity(productId, quantity) } catch { /* 绑定服务端数量，失败不污染本地 */ }
 }
 const checkout = () => {
+  if(cartStore.items.some(item=>item.specs?.display_only))return ElMessage.warning('购物车包含暂未开售的产品，当前不能结算；请先移除这些产品')
   if (!userStore.user?.token) return ElMessage.warning('请先登录')
   checkoutItems.value = cartStore.items.map(item => ({ ...item }))
   requestKey = null

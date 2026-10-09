@@ -47,6 +47,13 @@ from app.services.ai_task import (
 from app.services.credit import CreditService
 from app.services.factory import get_ai_service
 
+@api_bp.route('/ai/review-assembly', methods=['POST'])
+def review_assembly():
+    _get_authenticated_user_or_401()
+    from app.services.assembly_review import validate_review, review_scene
+    parts, image = validate_review(request.get_json(silent=True))
+    return APIResponse.success(review_scene(parts, image))
+
 def _capability_service(capability, provider=None):
     from flask import current_app
     key = 'AI_GENERATION_PROVIDER' if capability == 'generation' else 'AI_ANALYSIS_PROVIDER'

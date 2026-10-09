@@ -1,6 +1,23 @@
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import * as THREE from 'three'
+import { shapeShoulderTransition } from '../src/three/shoulderTransition.js'
+
+test('肩颈过渡保留衣领高度和下半身，不破坏纹理坐标',()=>{
+ const group=new THREE.Group(),geometry=new THREE.BoxGeometry(1,2,.5,10,20,2),mesh=new THREE.Mesh(geometry)
+ mesh.position.y=1;group.add(mesh)
+ const uv=Array.from(geometry.attributes.uv.array),before=Array.from(geometry.attributes.position.array)
+ shapeShoulderTransition(group)
+ const position=geometry.attributes.position
+ let dropped=0
+ for(let i=0;i<position.count;i++){
+   const x=before[i*3],y=before[i*3+1]
+   if(y<.8)assert.equal(position.getY(i),y)
+   if(y===1&&Math.abs(x)>.4){assert.ok(position.getY(i)<y);dropped++}
+   if(y===1&&Math.abs(x)<.1)assert.equal(position.getY(i),y)
+ }
+ assert.ok(dropped>0);assert.deepEqual(Array.from(geometry.attributes.uv.array),uv)
+})
 import {clipPart} from '../src/three/clipPart.js'
 test('body clipping removes upper region, preserves UVs and closes the neck',()=>{
  const mesh=new THREE.Mesh(new THREE.BoxGeometry(2,2,2),new THREE.MeshPhysicalMaterial({color:'#cc6644'}));mesh.position.y=1

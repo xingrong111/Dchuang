@@ -87,11 +87,10 @@ def add_cart():
     if not product or not product.active:
         raise ResourceNotFoundError('商品不存在或已下架')
     quantity = _quantity(data.get('quantity', 1))
-    if (product.specs or {}).get('display_only'):
-        raise ValidationError('设计展示尚未实物销售，不能加入购物车')
     row = CartItem.query.filter_by(user_id=user.id, product_id=product.id).first()
     count = (row.quantity if row else 0) + quantity
-    if count > min(99, product.stock):
+    limit = 99 if (product.specs or {}).get('display_only') else min(99, product.stock)
+    if count > limit:
         raise ValidationError('商品库存不足或超出数量上限')
     if not row:
         row = CartItem(user_id=user.id, product_id=product.id, quantity=count)
@@ -117,7 +116,7 @@ def update_cart(product_id):
     row = CartItem.query.filter_by(user_id=user.id, product_id=product_id).first()
     if not row:
         raise ResourceNotFoundError('购物车商品不存在')
-    if not row.product.active or quantity > row.product.stock:
+    if not row.product.active or (not (row.product.specs or {}).get('display_only') and quantity > row.product.stock):
         raise ValidationError('商品已下架或库存不足')
     row.quantity = quantity
     db.session.commit()
@@ -157,7 +156,7 @@ def create_order():
             if not product or not product.active:
                 raise ValidationError('商品不存在或已下架')
             if (product.specs or {}).get('display_only'):
-                raise ValidationError('设计展示尚未实物销售，不能提交订单')
+                raise ValidationError('该产品暂未开售，不能购买或提交订单')
             changed = (Product.query.filter(Product.id == pid, Product.active.is_(True),
                                            Product.stock >= quantity)
                        .update({Product.stock: Product.stock - quantity}, synchronize_session=False))

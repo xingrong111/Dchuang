@@ -31,6 +31,24 @@ def payload(key='request-key-123', items=None):
             'items': items or [{'product_id': 1, 'quantity': 2, 'price': 0.01}]}
 
 
+def test_unreleased_product_cart_persists_but_cannot_order(setup):
+    app, client, headers, other = setup
+    with app.app_context():
+        db.session.add(Product(id=3, name='蚕猫摆件', category='clay', price_cents=0, stock=0, specs={'display_only': True}))
+        db.session.commit()
+    assert client.post('/shop/cart', headers=headers, json={'product_id': 3}).status_code == 200
+    assert client.put('/shop/cart/3', headers=headers, json={'quantity': 3}).status_code == 200
+    rows = client.get('/shop/cart', headers=headers).json['data']
+    assert rows[0]['quantity'] == 3 and rows[0]['specs']['display_only']
+    assert client.get('/shop/cart', headers=other).json['data'] == []
+    result = client.post('/shop/orders', headers=headers, json=payload(items=[{'product_id': 3, 'quantity': 1}]))
+    assert result.status_code == 400
+    assert '暂未开售' in result.json['message']
+    with app.app_context():
+        assert Order.query.count() == 0
+    assert client.delete('/shop/cart/3', headers=headers).status_code == 200
+
+
 def test_price_idempotency_owner_and_cancel(setup):
     app, client, headers, other = setup
     response = client.post('/shop/orders', headers=headers, json=payload())

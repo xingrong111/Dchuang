@@ -8,7 +8,7 @@ export const useCartStore = defineStore('cart', () => {
   const items = ref([]), busy = ref(false)
   let version = 0
   const totalCount = computed(() => items.value.reduce((sum, item) => sum + item.quantity, 0))
-  const totalPrice = computed(() => items.value.reduce((sum, item) => sum + Math.round(item.price * 100) * item.quantity, 0) / 100)
+  const totalPrice = computed(() => items.value.reduce((sum, item) => sum + (item.specs?.display_only ? 0 : Math.round(item.price * 100) * item.quantity), 0) / 100)
   async function refresh() {
     if (!userStore.user?.token) { items.value = []; return }
     const token = version

@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { clipPart } from './clipPart.js'
 import { neckSocket, shoulderWidth } from './partSockets.js'
+import { shapeShoulderTransition } from './shoulderTransition.js'
 const sources=new Map()
 const source=async(id,folder='products')=>{
  const key=folder+'/'+id
@@ -32,7 +33,9 @@ export async function createWorkshopPart(id){
  }
  if(['body-robe','body-opera','body-jacket'].includes(part.asset)){
   const b=new THREE.Box3().setFromObject(object),fractions={'body-robe':.72,'body-opera':.86,'body-jacket':.69},cut=b.min.y+(b.max.y-b.min.y)*fractions[part.asset]
-  const clipped=clipPart(object,'y',cut,true,'#e4c7a6');disposeObject(object);object=clipped
+  const clothColors={'body-robe':'#c66c60','body-opera':'#b4d0db','body-jacket':'#9dbfae'}
+  const clipped=clipPart(object,'y',cut,true,clothColors[part.asset]);disposeObject(object);object=clipped
+  shapeShoulderTransition(object)
  }
  if(['arms-open','arms-lift'].includes(part.asset)){
   const b=new THREE.Box3().setFromObject(object),center=(b.min.x+b.max.x)/2,gap=(b.max.x-b.min.x)*.18
@@ -43,7 +46,7 @@ export async function createWorkshopPart(id){
   const cat=clipPart(low,'x',(b.min.x+b.max.x)/2-(b.max.x-b.min.x)*.15,true,'#e6d9b8',true);disposeObject(low);disposeObject(object);object=cat
  }
  // The generated head assets include busts. Remove the shoulders before docking.
- const headCuts={'head-sage':.35,'head-opera':.18,'head-child-smile':.32,'head-man-sunny':.34}
+ const headCuts={'head-sage':.35,'head-opera':.18,'head-child-smile':.26,'head-man-sunny':.28}
  if(headCuts[part.asset]){
   const b=new THREE.Box3().setFromObject(object),cut=b.min.y+(b.max.y-b.min.y)*headCuts[part.asset]
   const clipped=clipPart(object,'y',cut,false,'#e4c7a6');disposeObject(object);object=clipped
@@ -84,18 +87,23 @@ export async function createWorkshopPart(id){
  const anchor=(name,position)=>root.userData.attachPoints.push({name,position,accept:['any'],used:false})
  if(part.category==='base'){anchor('top',[0,height,0]);anchor('companion',[width*.5,0,0]);anchor('accessory',[-width*.5,0,0])}
  else if(part.category==='body'){
-  const shoulders=shoulderWidth(root,height,width),collar=neckSocket(root,'top',.008),neckHeight=height*.02
+  const shoulders=shoulderWidth(root,height,width),collar=neckSocket(root,'top',.008),neckHeight=height*.025
+  root.userData.collarPosition=[...collar]
+  root.userData.neckHeight=neckHeight
   root.userData.dimensions.shoulderWidth=shoulders
   root.userData.dimensions.headHeight=height*({'body-robe':.29,'body-opera':.19,'body-scholar':.2,'body-jacket':.23}[part.asset]||.2)
   root.userData.integratedArms=true
-  const neck=new THREE.Mesh(new THREE.CylinderGeometry(1,1.08,neckHeight+height*.014,24),new THREE.MeshStandardMaterial({color:'#e4c7a6',roughness:.85}))
-  neck.name='neck-joint';neck.visible=false;neck.position.set(collar[0],collar[1]+neckHeight*.5,collar[2]);neck.scale.set(shoulders*.075,1,shoulders*.075);root.add(neck)
+  const neck=new THREE.Mesh(new THREE.CylinderGeometry(.86,1,1,32),new THREE.MeshStandardMaterial({color:'#e4c7a6',roughness:.85}))
+  neck.userData.adaptiveNeck=true
+  neck.name='neck-joint';neck.visible=false;neck.position.set(collar[0],collar[1]+neckHeight*.5,collar[2]);neck.scale.set(shoulders*.075,neckHeight+height*.014,shoulders*.075);root.add(neck)
   anchor('bottom',[0,0,0]);anchor('top',[collar[0],collar[1]+neckHeight,collar[2]]);anchor('front',[0,height*.65,depth*.22]);anchor('accessory',[-width*.5,0,0]);anchor('companion',[width*.5,0,0])
  }
  else if(part.category==='head'){
   const anatomy={'head-child-smile':[.92,.9],'head-sage':[.72,.88],'head-opera':[.68,.78],'head-man-sunny':[.92,.91]}[part.asset]
   root.userData.dimensions.anatomicalHeight=height*anatomy[0]
   root.userData.dimensions.anatomicalWidth=width*anatomy[1]
+  root.userData.dimensions.figureType=part.asset==='head-child-smile'?'child':'adult'
+  root.userData.dimensions.shoulderRatio=part.asset==='head-child-smile'?.68:.5
   root.userData.skinTone={'head-child-smile':'#e4c7a6','head-sage':'#d8af8c','head-opera':'#ead1bc','head-man-sunny':'#e4b899'}[part.asset]
   anchor('bottom',neckSocket(root,'bottom'))
  }

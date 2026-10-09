@@ -25,7 +25,7 @@
           </div>
         </div>
         <div class="hero-visual">
-          <img class="concept-hero" :src="`${base}content/afu-desk-studio.webp`" alt="阿福桌面摆件设计效果图，非实物照片" />
+          <img class="concept-hero" :src="`${base}content/afu-desk-studio.webp`" alt="阿福桌面摆件产品图片，非实物照片" />
           <span class="hero-caption">从传统题材，到原创生活设计</span>
         </div>
       </div>

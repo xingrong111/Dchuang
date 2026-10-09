@@ -164,7 +164,7 @@
       "next": "设计关注：稳定底座、圆润轮廓与便于日常摆放的尺寸。",
       "image": "afu-desk-studio.webp",
       "model": "models/products/afu-desk.glb",
-      "visualStatus": "设计效果图",
+      "visualStatus": "产品图片",
       "prototypeStatus": "数字展示模型；实物规格以最终产品信息为准",
       "modelSource": "模型来源：腾讯混元 3D V3.1"
     },
@@ -186,7 +186,7 @@
       "next": "设计关注：支撑稳定性、防滑底面与圆润边缘。",
       "image": "cat-book-studio.webp",
       "model": "models/products/cat-book.glb",
-      "visualStatus": "设计效果图",
+      "visualStatus": "产品图片",
       "prototypeStatus": "数字展示模型；实物规格以最终产品信息为准",
       "modelSource": "模型来源：腾讯混元 3D V3.1"
     },
@@ -208,7 +208,7 @@
       "next": "设计关注：纸张书写手感、平展装订与清晰的配色记录页。",
       "image": "notebook-studio.webp",
       "model": "models/products/notebook.glb",
-      "visualStatus": "设计效果图",
+      "visualStatus": "产品图片",
       "prototypeStatus": "数字展示模型；实物规格以最终产品信息为准",
       "modelSource": "模型来源：腾讯混元 3D V3.1"
     },
@@ -230,7 +230,7 @@
       "next": "设计关注：系列图形的一致性、独立书写区与纸张触感。",
       "image": "postcards-studio.webp",
       "model": "models/products/postcards.glb",
-      "visualStatus": "设计效果图",
+      "visualStatus": "产品图片",
       "prototypeStatus": "数字展示模型；实物规格以最终产品信息为准",
       "modelSource": "模型来源：腾讯混元 3D V3.1"
     },
@@ -252,7 +252,7 @@
       "next": "设计关注：易理解的步骤卡、合理的工具搭配与清晰的使用指引。",
       "image": "kit-studio.webp",
       "model": "models/products/kit.glb",
-      "visualStatus": "设计效果图",
+      "visualStatus": "产品图片",
       "prototypeStatus": "数字展示模型；实物规格以最终产品信息为准",
       "modelSource": "模型来源：腾讯混元 3D V3.1"
     },

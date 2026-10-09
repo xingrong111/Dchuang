@@ -3,7 +3,7 @@
     <h1>惠山泥人 · 3D 资产库</h1>
     <p class="intro">探索完整的非遗主题文创模型。点击设计进入三维预览，拖动查看各个角度；工程组装原型收纳在下方。</p>
     <p><RouterLink to="/workshop">进入共创工坊</RouterLink></p>
-    <section><h2>混元文创模型</h2><p class="note">生活文创与主题摆件由腾讯混元 3D V3.1 制作。点击设计进入效果图与3D对照，GLB不代表可直接制造的模型。</p><div class="asset-grid"><article v-for="item in editorial.products" :key="item.id"><RouterLink :to="{path:'/shop/designs',query:{design:item.id}}"><img class="product-photo" :src="`${base}content/${item.image}`" :alt="item.name+'设计效果图'" loading="lazy" /></RouterLink><div class="caption"><h3>{{ item.name }}</h3><a :href="`${base}${item.model}`" :download="item.id+'.glb'">下载 GLB</a></div></article></div></section>
+    <section><h2>混元文创模型</h2><p class="note">生活文创与主题摆件由腾讯混元 3D V3.1 制作。点击作品查看产品图片与三维模型，GLB不代表可直接制造的模型。</p><div class="asset-grid"><article v-for="item in editorial.products" :key="item.id"><RouterLink :to="{path:'/shop/designs',query:{design:item.id}}"><img class="product-photo" :src="`${base}content/${item.image}`" :alt="item.name+'产品图片'" loading="lazy" /></RouterLink><div class="caption"><h3>{{ item.name }}</h3><a :href="`${base}${item.model}`" :download="item.id+'.glb'">下载 GLB</a></div></article></div></section>
     <details @toggle="legacyExpanded=$event.target.open"><summary>工程组装原型与部件（用于编辑器练习）</summary>
     <template v-if="legacyExpanded"><section v-for="section in sections" :key="section.title">
       <h2>{{ section.title }}</h2>

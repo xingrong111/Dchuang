@@ -1,9 +1,9 @@
 <template>
-  <div class="concept-page page-container"><figure class="collection-hero"><img :src="asset('collection-studio.webp')" alt="五款文创系列的设计效果图，暂无实物销售" /><figcaption>设计效果图 · 生活文创系列</figcaption></figure><header class="intro"><span class="eyebrow">DESIGN EXPLORATIONS · 文创提案</span><h1>把祝福，放进日常</h1><p>从阿福的轮廓、蚕猫的神态与彩塑的配色中寻找灵感。系列原创文创，让文化阅读延伸到生活设计。</p><div class="notice">概念展示 · 图像为设计效果图，3D模型来自腾讯混元，二者细节存在差异；尚未打样。暂无实物销售、下单或定制服务。</div></header>
-    <div class="filters"><label class="search">搜索设计<el-input v-model="keyword" placeholder="名称、灵感或材料" clearable /></label><div class="category-buttons"><button v-for="cat in categories" :key="cat" :class="{active:category===cat}" @click="category=cat">{{ cat }}</button></div></div><p class="result-count">{{ filtered.length }} 款概念方案</p>
-    <div class="product-grid"><article v-for="product in filtered" :key="product.id" class="product"><button class="image-button" :aria-label="`查看${product.name}设计`" @click="selected=product"><img :src="asset(product.image)" :alt="product.name+'设计效果图，非实物照片'" loading="lazy" /></button><div class="product-body"><span class="eyebrow">{{ product.category }} · 概念设计</span><h2>{{ product.name }}</h2><p>{{ product.intro }}</p><button class="detail-button" @click="selected=product">阅读设计说明 ↗</button></div></article></div><div v-if="!filtered.length" class="empty"><p>没有匹配的设计，试试“阿福”或“纸品”。</p><button @click="keyword='';category='全部'">清除筛选</button></div>
-    <section class="process"><h2>从概念到实物，还需要什么？</h2><p>未来需要完成材料选择、结构打样、供应方确认与交付安排，再决定是否开放销售。</p><RouterLink to="/museum">了解文化灵感</RouterLink><RouterLink to="/workshop">进入数字共创工坊</RouterLink></section>
-    <el-dialog :model-value="!!selected" :title="selected?.name" width="820px" @update:model-value="value=>{if(!value)selected=null}"><div v-if="selected" class="detail"><div class="visual-panel"><div class="view-buttons"><button :class="{active:visualMode==='image'}" @click="visualMode='image'">设计效果图</button><button :class="{active:visualMode==='model'}" @click="visualMode='model'">旋转3D模型</button></div><img v-if="visualMode==='image'" :src="asset(selected.image)" :alt="selected.name+'设计效果图'" /><ModelPreview v-else :key="selected.id" :url="`${base}${selected.model}`" /><p class="visual-caption">{{ visualMode==='image' ? '设计效果图，非实物照片；用于展示材质与使用场景。' : (selected.modelSource ? selected.modelSource+'，可旋转观察；尺寸为展示拟定值，尚未进行制造验证。' : '工程原型，细节与效果图不同，后续逐步替换。') }}</p><a :href="`${base}${selected.model}`" :download="selected.id+'.glb'">下载 GLB 展示模型</a> · <RouterLink :to="{path:'/workshop/3d-editor',query:{modelAsset:selected.id}}">在工坊使用</RouterLink></div><div><p class="eyebrow">原创概念 · 暂未生产</p><p>{{ selected.story }}</p><dl><dt>材料方向</dt><dd>{{ selected.material }}</dd><dt>拟定规格</dt><dd>{{ selected.size }}</dd></dl><ul><li v-for="feature in selected.features" :key="feature">{{ feature }}</li></ul><p class="notice">{{ selected.next }}。以上均为设计提案，不是实物参数承诺。</p><RouterLink to="/museum">查看相关文化资料</RouterLink></div></div></el-dialog>
+  <div class="concept-page page-container"><figure class="collection-hero"><img :src="asset('collection-studio.webp')" alt="五款文创系列的产品图片，暂无实物销售" /><figcaption>产品图片 · 生活文创系列</figcaption></figure><header class="intro"><span class="eyebrow">WUXI COLLECTION · 无锡文创</span><h1>把祝福，放进日常</h1><p>从阿福的轮廓、蚕猫的神态与彩塑的配色中寻找灵感。系列原创文创，让文化阅读延伸到生活设计。</p><div class="notice">文创产品可加入购物车。当前暂未开售，不能购买、结算或定制。</div></header>
+    <div class="filters"><label class="search">搜索设计<el-input v-model="keyword" placeholder="名称、灵感或材料" clearable /></label><div class="category-buttons"><button v-for="cat in categories" :key="cat" :class="{active:category===cat}" @click="category=cat">{{ cat }}</button></div></div><p class="result-count">{{ filtered.length }} 款文创产品</p>
+    <div class="product-grid"><article v-for="product in filtered" :key="product.id" class="product"><button class="image-button" :aria-label="`查看${product.name}设计`" @click="selected=product"><img :src="asset(product.image)" :alt="product.name+'产品图片，非实物照片'" loading="lazy" /></button><div class="product-body"><span class="eyebrow">{{ product.category }} · 无锡文创</span><h2>{{ product.name }}</h2><p>{{ product.intro }}</p><button class="detail-button" @click="selected=product">阅读作品说明 ↗</button><el-button :loading="cartBusy" @click="addDesignToCart(product)">加入购物车</el-button></div></article></div><div v-if="!filtered.length" class="empty"><p>没有匹配的设计，试试“阿福”或“纸品”。</p><button @click="keyword='';category='全部'">清除筛选</button></div>
+    <section class="process"><h2>无锡文化，融入日常</h2><p>以泥塑、锡绣与江南风物为灵感，探索摆件、文具与生活用品中的无锡文化。</p><RouterLink to="/museum">了解文化灵感</RouterLink><RouterLink to="/workshop">进入数字共创工坊</RouterLink></section>
+    <el-dialog :model-value="!!selected" :title="selected?.name" width="820px" @update:model-value="value=>{if(!value)selected=null}"><div v-if="selected" class="detail"><div class="visual-panel"><div class="view-buttons"><button :class="{active:visualMode==='image'}" @click="visualMode='image'">产品图片</button><button :class="{active:visualMode==='model'}" @click="visualMode='model'">旋转3D模型</button></div><img v-if="visualMode==='image'" :src="asset(selected.image)" :alt="selected.name+'产品图片'" /><ModelPreview v-else :key="selected.id" :url="`${base}${selected.model}`" /><p class="visual-caption">{{ visualMode==='image' ? '查看产品造型、材质与使用场景。' : (selected.modelSource ? selected.modelSource+'，可旋转观察作品细节。' : '可旋转观察作品细节。') }}</p><a :href="`${base}${selected.model}`" :download="selected.id+'.glb'">下载 GLB 展示模型</a> · <RouterLink :to="{path:'/workshop/3d-editor',query:{modelAsset:selected.id}}">在工坊使用</RouterLink></div><div><p class="eyebrow">原创文创 · 暂未开售</p><p>{{ selected.story }}</p><dl><dt>材料方向</dt><dd>{{ selected.material }}</dd><dt>参考规格</dt><dd>{{ selected.size }}</dd></dl><ul><li v-for="feature in selected.features" :key="feature">{{ feature }}</li></ul><p class="notice">暂未开售，可加入购物车保留选品，当前不能购买。</p><el-button type="primary" :loading="cartBusy" @click="addDesignToCart(selected)">加入购物车</el-button><el-button @click="ElMessage.info('暂未开售，当前不能购买')">立即购买</el-button><RouterLink to="/shop">查看购物车</RouterLink> · <RouterLink to="/museum">查看相关文化资料</RouterLink></div></div></el-dialog>
   </div>
 </template>
 <script setup>
@@ -13,6 +13,22 @@ const base=import.meta.env.BASE_URL
 const visualMode=ref('image')
 import content from '@/content/editorial.json'
 import { useRoute } from 'vue-router'
+import { useCartStore } from '@/store/cartStore'
+import { useUserStore } from '@/store/userStore'
+import { getProducts } from '@/api/shop'
+import { ElMessage } from 'element-plus'
+const cartStore=useCartStore(),userStore=useUserStore(),cartBusy=ref(false)
+const addDesignToCart=async product=>{
+ if(!userStore.user?.token)return ElMessage.warning('请先登录后加入购物车')
+ if(cartBusy.value)return
+ cartBusy.value=true
+ try{
+  const response=await getProducts({page:1,per_page:100})
+  const entry=response.data.find(item=>item.specs?.design_id===product.id)
+  if(!entry)return ElMessage.warning('该产品暂未加入商城目录')
+  if(await cartStore.addToCart(entry))ElMessage.success('已加入购物车，该产品暂未开售，不能购买')
+ }catch{ /* 请求错误由统一提示处理 */ }finally{cartBusy.value=false}
+}
 const keyword=ref(''),category=ref('全部'),selected=ref(null)
 watch(selected,()=>{visualMode.value='image'})
 const route=useRoute()

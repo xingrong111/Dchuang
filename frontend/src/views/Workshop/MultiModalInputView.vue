@@ -138,7 +138,7 @@ const loadModelFromTask = async (task) => {
     statusMessage.value = '任务完成，但未获取到模型文件';
     return;
   }
-  if (!disposed) { modelUrl.value = url; statusMessage.value = task.provider === 'mock' ? '演示任务完成：展示固定阿福模型，使用预设模型展示' : '任务已完成，正在加载模型'; }
+  if (!disposed) { modelUrl.value = url; statusMessage.value = task.provider === 'mock' ? '阿福模型已载入' : '任务已完成，正在加载模型'; }
 };
 
 // ---- AI 提交 ----

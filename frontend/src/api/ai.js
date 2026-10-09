@@ -1,4 +1,5 @@
 import request from './index';
+export const reviewAssembly = data => request.post('/ai/review-assembly', data, { timeout: 70000 });
 
 // ============================================================
 // AI 模块

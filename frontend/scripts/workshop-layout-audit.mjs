@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises'
-const debug='http://127.0.0.1:19223',origin='http://127.0.0.1:15176'
+const debug=(process.env.EDGE_DEBUG_URL || 'http://127.0.0.1:19223'),origin=(process.env.AUDIT_ORIGIN || 'http://127.0.0.1:15176')
 const target=await(await fetch(debug+'/json/new?about:blank',{method:'PUT'})).json(),socket=new WebSocket(target.webSocketDebuggerUrl)
 await new Promise(resolve=>socket.onopen=resolve)
 let id=0;const pending=new Map()
@@ -21,6 +21,10 @@ try{
  await command('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false})
  if(!(await evaluate(`!!document.querySelector('.category-grid')`)))throw Error('Editor unavailable to visitors')
  for(const [cat,name] of [['宠物','铃铛福犬'],['配件','梅花油纸伞'],['头部','微笑小孩'],['身体','童趣短褂'],['底座','雕花木台']])await add(cat,name)
+ await click('检查并优化装配');await sleep(200)
+ if(!(await evaluate(`document.querySelector('[role="status"]').textContent.includes('检查通过')`)))throw Error('Assembly review did not pass')
+ await click('撤销上次校正');await sleep(200)
+ if(!(await evaluate(`document.querySelector('[role="status"]').textContent.includes('已恢复')`)))throw Error('Assembly undo failed')
  await click('重置视角').catch(()=>{});await sleep(400)
  let shot=await command('Page.captureScreenshot',{format:'png'});await fs.writeFile('reports/browser/workshop-layout-child.png',Buffer.from(shot.data,'base64'))
  await add('头部','阳光男子');await add('身体','江南长衫')
@@ -31,5 +35,5 @@ try{
  const mobile=await evaluate(`({overflow:document.documentElement.scrollWidth-innerWidth,canvasWidth:document.querySelector('.canvas-container canvas').getBoundingClientRect().width})`)
  if(mobile.overflow>2||mobile.canvasWidth<=0)throw Error('Mobile layout '+JSON.stringify(mobile))
  shot=await command('Page.captureScreenshot',{format:'png'});await fs.writeFile('reports/browser/workshop-layout-mobile.png',Buffer.from(shot.data,'base64'))
- console.log(JSON.stringify({guestEditor:true,added:['pet','accessory','head','body','base'],replaced:['head','body'],mobile,...result}))
+ console.log(JSON.stringify({guestEditor:true,review:true,undo:true,added:['pet','accessory','head','body','base'],replaced:['head','body'],mobile,...result}))
 }finally{socket.close();await fetch(debug+'/json/close/'+target.id)}

@@ -36,6 +36,7 @@ export function alignConnection(part) {
   const offset = new THREE.Vector3(...connection.selfPosition)
     .multiply(part.scale).applyQuaternion(part.quaternion)
   part.position.fromArray(connection.targetPosition).sub(offset)
+  if(part.userData.category==='head')part.position.y+=(part.userData.neckLift||0)*(part.parent.userData.dimensions?.height||1)
   if(['pet','accessory'].includes(part.userData.category)&&part.parent.userData.dimensions){
     const target=part.parent,dimensions=target.userData.dimensions
     const body=target.userData.category==='body'?target:target.children.find(child=>child.userData.category==='body')
@@ -46,17 +47,31 @@ export function alignConnection(part) {
     const parentScale=target.getWorldScale(new THREE.Vector3()).x
     part.position.x=side*(radius+extent.x/parentScale/2+.045)
     part.position.z=0
+    target.updateWorldMatrix(true,true)
+    const ground=target.localToWorld(new THREE.Vector3(0,0,0)).y
+    const bottom=new THREE.Box3().setFromObject(part).min.y
+    const worldScale=target.getWorldScale(new THREE.Vector3()).y
+    if(Number.isFinite(bottom)&&worldScale>0)part.position.y+=(ground-bottom)/worldScale
   }
   if(part.userData.category==='head'){
     const neck=part.parent.getObjectByName('neck-joint')
-    if(neck){const radius=part.userData.dimensions.width*part.scale.x*.15;neck.scale.set(radius,1,radius)}
+    if(neck){
+      const radius=(part.userData.dimensions.anatomicalWidth||part.userData.dimensions.width)*part.scale.x*.18
+      if(neck.userData.adaptiveNeck){
+        const body=part.parent,collar=body.userData.collarPosition
+        const lift=(part.userData.neckLift||0)*body.userData.dimensions.height
+        const height=body.userData.neckHeight+lift+body.userData.dimensions.height*.014
+        neck.scale.set(radius,height,radius)
+        neck.position.set(collar[0],collar[1]+(body.userData.neckHeight+lift)*.5,collar[2])
+      }else neck.scale.set(radius,1,radius)
+    }
   }
 }
 
 export function fittedHeadScale(head, body) {
   return Math.min(
-    (body.shoulderWidth ? body.shoulderWidth * .5 : body.width * .82) / (head.anatomicalWidth ?? head.width),
-    (body.headHeight ?? body.height * .7) / (head.anatomicalHeight ?? head.height),
+    (body.shoulderWidth ? body.shoulderWidth * (head.shoulderRatio ?? .5) : body.width * .82) / (head.anatomicalWidth ?? head.width),
+    (head.figureType === 'child' ? body.height * .34 : (body.headHeight ?? body.height * .7)) / (head.anatomicalHeight ?? head.height),
   )
 }
 
@@ -83,7 +98,7 @@ export function attachPart(part, connection) {
   alignConnection(part)
   if(part.userData.category==='head'){
     const neck=target.getObjectByName('neck-joint')
-    if(neck){neck.visible=true;neck.material.color.set(part.userData.skinTone||'#e4c7a6');const radius=dimensions.width*part.scale.x*.15;neck.scale.set(radius,1,radius)}
+    if(neck){neck.visible=true;neck.material.color.set(part.userData.skinTone||'#e4c7a6');alignConnection(part)}
   }
 }
 

@@ -9,7 +9,7 @@ export default defineConfig([
     files: ['**/*.{js,mjs,jsx,vue}'],
   },
 
-  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**', '.browser-hunyuan*/**', '.browser-audit*/**', '.asset-review-browser*/**', '.acceptance/**']),
+  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**', '.browser*/**', '.asset-review-browser*/**', '.acceptance/**']),
 
   {
     languageOptions: {

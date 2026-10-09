@@ -1,9 +1,9 @@
 import fs from 'node:fs/promises'
-const origin='http://127.0.0.1:15176',debug='http://127.0.0.1:19223'
+const origin=(process.env.AUDIT_ORIGIN || 'http://127.0.0.1:15176'),debug=(process.env.EDGE_DEBUG_URL || 'http://127.0.0.1:19223')
 const target=await(await fetch(debug+'/json/new?about:blank',{method:'PUT'})).json(),socket=new WebSocket(target.webSocketDebuggerUrl)
 await new Promise(resolve=>socket.onopen=resolve)
 let id=0;const pending=new Map(),errors=[],checks=[]
-socket.onmessage=event=>{const m=JSON.parse(event.data);if(m.id){const c=pending.get(m.id);pending.delete(m.id);m.error?c.reject(m.error):c.resolve(m.result)}else if(m.method==='Runtime.exceptionThrown')errors.push(m.params.exceptionDetails.text)}
+socket.onmessage=event=>{const m=JSON.parse(event.data);if(m.id){const c=pending.get(m.id);pending.delete(m.id);m.error?c.reject(m.error):c.resolve(m.result)}else if(m.method==='Runtime.exceptionThrown')errors.push(m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text)}
 const command=(method,params={})=>new Promise((resolve,reject)=>{const n=++id;pending.set(n,{resolve,reject});socket.send(JSON.stringify({id:n,method,params}))})
 const evaluate=async expression=>{const r=await command('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result.value}
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms))

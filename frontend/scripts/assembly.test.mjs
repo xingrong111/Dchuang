@@ -3,7 +3,44 @@ import assert from 'node:assert/strict'
 import * as THREE from 'three'
 import { findConnection, attachPart, alignConnection, rebuildConnections, connectAvailableParts, releasePart, fittedHeadScale } from '../src/three/assembly.js'
 import { neckSocket } from '../src/three/partSockets.js'
+import { captureAssembly, inspectAssembly, reviewAndRepair, restoreAssembly } from '../src/three/assemblyReview.js'
+
+test('装配复核纠正夸张头部和倾斜，允许恢复用户原始姿态', () => {
+ const body=part('afu_body','top',[0,1.4,0]),head=part('afu_head','bottom',[0,0,0])
+ body.userData.category='body';body.userData.dimensions={width:1,height:1.35,shoulderWidth:.7,headHeight:.27}
+ head.userData.category='head';head.userData.dimensions={width:1,height:1}
+ attachPart(head,findConnection(head,[body]));head.scale.setScalar(2);head.rotation.z=.5
+ const root=new THREE.Group();root.add(body)
+ assert.ok(inspectAssembly([body,head]).some(issue=>issue.code==='proportion'))
+ const result=reviewAndRepair([body,head])
+ assert.equal(result.issues.length,0);assert.equal(head.rotation.z,0)
+ assert.ok(restoreAssembly(result.snapshot,[body,head]));assert.equal(head.scale.x,2);assert.equal(head.rotation.z,.5)
+})
+test('缺少身体时保留提示，部件替换后不允许恢复陈旧快照',()=>{
+ const head=part('afu_head','bottom',[0,0,0]);head.userData.category='head'
+ assert.ok(inspectAssembly([head]).some(issue=>issue.code==='missing-body'))
+ assert.equal(restoreAssembly(captureAssembly([head]),[]),false)
+})
 function part(id, name, position) { const p = new THREE.Group(); p.userData = { partId: id, attachPoints: [{ name, position, used: false }] }; return p }
+
+test('颈部微调保持连接、恢复可见过渡并支持撤销高度',()=>{
+ const body=part('afu_body','top',[0,1.4,0]),head=part('afu_head','bottom',[0,0,0])
+ body.userData.category='body';body.userData.dimensions={width:1,height:1.35,shoulderWidth:.7,headHeight:.27}
+ body.userData.collarPosition=[0,1.35,0];body.userData.neckHeight=.05
+ head.userData.category='head';head.userData.dimensions={width:1,height:1}
+ const neck=new THREE.Mesh(new THREE.CylinderGeometry(1,1,1),new THREE.MeshStandardMaterial())
+ neck.name='neck-joint';neck.userData.adaptiveNeck=true;body.add(neck)
+ attachPart(head,findConnection(head,[body]))
+ head.userData.neckLift=.03;alignConnection(head)
+ assert.ok(Math.abs(head.position.y-(1.4+.03*1.35))<1e-8)
+ assert.equal(inspectAssembly([body,head]).length,0)
+ neck.visible=false
+ assert.ok(inspectAssembly([body,head]).some(issue=>issue.code==='neck'))
+ const result=reviewAndRepair([body,head])
+ assert.equal(result.issues.length,0);assert.equal(neck.visible,true);assert.equal(head.userData.neckLift,0)
+ restoreAssembly(result.snapshot,[body,head]);assert.equal(head.userData.neckLift,.03)
+ assert.ok(neck.scale.y>.05)
+})
 
 test('配饰与宠物先加入、后加身体和底座，最终分居两侧且落在地面',()=>{
  const root=new THREE.Group()

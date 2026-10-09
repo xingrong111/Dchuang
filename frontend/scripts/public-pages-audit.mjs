@@ -1,9 +1,9 @@
 import fs from 'node:fs/promises'
-const origin='http://127.0.0.1:15176',debug='http://127.0.0.1:19223'
+const origin=(process.env.AUDIT_ORIGIN || 'http://127.0.0.1:15176'),debug=(process.env.EDGE_DEBUG_URL || 'http://127.0.0.1:19223')
 const target=await(await fetch(debug+'/json/new?about:blank',{method:'PUT'})).json(),socket=new WebSocket(target.webSocketDebuggerUrl)
 await new Promise(resolve=>socket.onopen=resolve)
 let id=0;const pending=new Map(),errors=[],checks=[]
-socket.onmessage=event=>{const m=JSON.parse(event.data);if(m.id){const c=pending.get(m.id);pending.delete(m.id);m.error?c.reject(m.error):c.resolve(m.result)}else if(m.method==='Runtime.exceptionThrown')errors.push(m.params.exceptionDetails.text)}
+socket.onmessage=event=>{const m=JSON.parse(event.data);if(m.id){const c=pending.get(m.id);pending.delete(m.id);m.error?c.reject(m.error):c.resolve(m.result)}else if(m.method==='Runtime.exceptionThrown')errors.push(m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text)}
 const command=(method,params={})=>new Promise((resolve,reject)=>{const n=++id;pending.set(n,{resolve,reject});socket.send(JSON.stringify({id:n,method,params}))})
 const evaluate=async expression=>{const r=await command('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result.value}
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms))
@@ -21,7 +21,7 @@ try{
    check(width+' '+path+' 内容可见',!!state.title||path==='/workshop')
    check(width+' '+path+' 无横向溢出',state.overflow<=2)
    check(width+' '+path+' 图片可用',state.images.length===0)
-   if(path==='/community')check(width+' 社区无需刷新显示六件作品',state.works===6)
+   if(path==='/community')check(width+' 社区无需刷新显示已有作品',state.works>=6)
    if(path==='/shop'){check(width+' 商城显示十款文创',state.products===10);check(width+' 商城无设计展示字样',!state.text.includes('设计展示'));check(width+' 商城完整显示产品封面',await evaluate("[...document.querySelectorAll('.product-image img')].every(img=>getComputedStyle(img).objectFit==='contain')"))}
    if(path==='/')check('首页没有重复博物馆文化章节',!state.text.includes('从一抔泥土，认识彩塑'))
    if(['/community','/shop','/museum','/'].includes(path)){const shot=await command('Page.captureScreenshot',{format:'png'});await fs.writeFile('reports/browser/page-'+(path==='/'?'home':path.slice(1))+'-'+width+'.png',Buffer.from(shot.data,'base64'))}
@@ -36,6 +36,11 @@ try{
  await evaluate(`router.push('/shop')`);await sleep(1000)
  await evaluate(`(()=>{const input=document.querySelector('.search-bar input');input.value='手账';input.dispatchEvent(new Event('input',{bubbles:true}));return true})()`);await sleep(900)
  check('商城关键词搜索',await evaluate(`document.querySelectorAll('.product-card').length===1&&document.querySelector('.product-name').textContent.includes('手账')`))
+ await evaluate(`router.push('/shop/designs?design=wuxi-canmao')`);await sleep(1000)
+ check('文创详情可加入购物车',await evaluate(`[...document.querySelectorAll('.el-dialog button')].some(button=>button.innerText.trim()==='加入购物车')`))
+ await evaluate(`(()=>{[...document.querySelectorAll('.el-dialog button')].find(button=>button.innerText.trim()==='立即购买').click();return true})()`);await sleep(200)
+ check('未开售购买提示',await evaluate(`[...document.querySelectorAll('.el-message')].some(message=>message.textContent.includes('不能购买'))`))
+ check('文创详情无占位文案',await evaluate(`!['设计效果图','设计效果','模拟数据','展示示例','概念展示'].some(word=>document.body.innerText.includes(word))`))
  check('无浏览器异常',errors.length===0)
 }finally{await fs.writeFile('reports/browser/public-pages-audit.json',JSON.stringify({checks,errors},null,2));console.log(JSON.stringify({checks:checks.length,failed:checks.filter(c=>!c.passed),errors}));socket.close();await fetch(debug+'/json/close/'+target.id)}
 

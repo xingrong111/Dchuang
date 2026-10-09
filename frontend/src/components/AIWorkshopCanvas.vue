@@ -19,6 +19,10 @@
               <el-slider v-model="modelParams.scale" :min="scaleBounds.min" :max="scaleBounds.max" :step="0.01" />
               <span class="param-value">{{ modelParams.scale.toFixed(2) }}</span>
             </el-form-item>
+            <el-form-item v-if="selectedIsHead" label="颈部衔接">
+              <el-slider v-model="modelParams.neckLift" :min="-0.015" :max="0.045" :step="0.002" />
+              <span class="asset-note">微调头部高度，颈部随之衔接；检查优化可恢复默认。</span>
+            </el-form-item>
             <el-form-item label="旋转X">
               <el-slider v-model="modelParams.rotation.x" :min="0" :max="360" />
               <span class="param-value">{{ modelParams.rotation.x }}°</span>
@@ -39,6 +43,13 @@
 
         <div class="actions-panel">
           <h3><el-icon><EditPen /></el-icon> 操作</h3>
+          <el-switch v-model="autoReview" active-text="添加后自动校正" />
+          <el-button @click="runAssemblyReview(true)" class="action-btn">检查并优化装配</el-button>
+          <el-button @click="undoAssemblyReview" :disabled="!reviewSnapshot" class="action-btn">撤销上次校正</el-button>
+          <el-button @click="runVisualReview" :loading="visualReviewBusy" :disabled="partLoading" class="action-btn">在线视觉复核</el-button>
+          <p class="asset-note">在线复核会发送场景截图，需登录并配置视觉服务；可能消耗服务额度。</p>
+          <p class="asset-note" role="status">{{ reviewMessage }}</p>
+          <ul v-if="reviewDetails.length" class="asset-note"><li v-for="item in reviewDetails" :key="item">{{ item }}</li></ul>
           <el-button @click="resetCamera" class="action-btn">
             <el-icon><RefreshLeft /></el-icon>
             重置视角
@@ -132,7 +143,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
+import { ref, shallowRef, reactive, computed, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/store/userStore'
 import editorial from '@/content/editorial.json'
@@ -144,12 +155,86 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'
 import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import { generate3D, getTask } from '@/api/ai'
+import { generate3D, getTask, reviewAssembly } from '@/api/ai'
 import { getWorkDetail, uploadFile, saveWork } from '@/api/workshop'
 import { ElMessageBox } from 'element-plus'
 import { findConnection, attachPart, alignConnection, rebuildConnections, connectAvailableParts, releasePart } from '@/three/assembly'
 import { WORKSHOP_CATEGORIES, WORKSHOP_PARTS, createWorkshopPart } from '@/three/workshopParts'
 import ModelPreview from '@/components/ModelPreview.vue'
+import { captureAssembly, reviewAndRepair, restoreAssembly } from '@/three/assemblyReview'
+
+const autoReview = ref(true), reviewSnapshot = shallowRef(null), visualReviewBusy = ref(false)
+const reviewMessage = ref('本地装配检查会校正比例、连接间隙、倾斜和落地位置。')
+const reviewDetails = ref([])
+const runAssemblyReview = (notify = false) => {
+  if (!placedModels.some(part => part.userData.category)) {
+    if (notify) ElMessage.info('请先添加部件')
+    return
+  }
+  const result = reviewAndRepair(placedModels)
+  reviewSnapshot.value = result.snapshot
+  reviewDetails.value = [...result.changes, ...result.issues.map(issue => issue.text)]
+  reviewMessage.value = result.issues.length ? '已完成校正，以下问题仍需补充部件或人工调整。' : '比例、连接与落地检查通过；可继续调整造型。'
+  selectModel(selectedModel)
+  frameAssembly()
+  if(notify)ElMessage.success(result.changes.length ? `已校正${result.changes.length}项；请查看装配说明` : '检查完成，未发现可自动校正的问题')
+}
+const undoAssemblyReview = () => {
+  if (!restoreAssembly(reviewSnapshot.value, placedModels)) {
+    reviewSnapshot.value = null
+    ElMessage.info('部件已改变，无法恢复这次校正')
+    return
+  }
+  reviewSnapshot.value = null; reviewDetails.value = []
+  reviewMessage.value = '已恢复校正前的比例和姿态。'
+  selectModel(selectedModel); frameAssembly()
+}
+const runVisualReview = async () => {
+  if (visualReviewBusy.value || !renderer || !placedModels.some(part => part.userData.category)) return
+  if (!userStore.user?.token) { ElMessage.info('请先登录后使用在线视觉复核'); return }
+  const parts = placedModels.filter(part => part.userData.category)
+  const original = captureAssembly(parts)
+  visualReviewBusy.value = true
+  try {
+    const collage = document.createElement('canvas'); collage.width = 1152; collage.height = 384
+    const context = collage.getContext('2d'), position = camera.position.clone()
+    const offset = position.clone().sub(controls.target), boxVisible = selectionBox?.visible
+    if (selectionBox) selectionBox.visible = false
+    try {
+      for (const [index, angle] of [0, .65, -.65].entries()) {
+        camera.position.copy(controls.target).add(offset.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), angle))
+        camera.lookAt(controls.target); renderer.render(scene, camera)
+        const ratio = Math.min(384 / renderer.domElement.width, 384 / renderer.domElement.height)
+        const width = renderer.domElement.width * ratio, height = renderer.domElement.height * ratio
+        context.fillStyle = '#eee8dd'; context.fillRect(index * 384, 0, 384, 384)
+        context.drawImage(renderer.domElement, index * 384 + (384 - width) / 2, (384 - height) / 2, width, height)
+      }
+    } finally {
+      camera.position.copy(position); camera.lookAt(controls.target)
+      if (selectionBox) selectionBox.visible = boxVisible
+      renderer.render(scene, camera)
+    }
+    const result = (await reviewAssembly({ parts: parts.map(part => ({ id: part.uuid, category: part.userData.category })), image: collage.toDataURL('image/png') })).data
+    if (editorDisposed || parts.length !== placedModels.filter(part => part.userData.category).length || original.some(item => !placedModels.includes(item.part) || !item.part.position.equals(item.position) || !item.part.quaternion.equals(item.quaternion) || !item.part.scale.equals(item.scale))) {
+      ElMessage.info('场景已改变，请重新复核'); return
+    }
+    const baseline = reviewAndRepair(parts)
+    for (const adjustment of result.adjustments || []) {
+      const part = parts.find(part => part.uuid === adjustment.id)
+      if (!part || !['pet', 'accessory'].includes(part.userData.category)) continue
+      part.scale.multiplyScalar(THREE.MathUtils.clamp(adjustment.scaleFactor ?? 1, .9, 1.1))
+      part.rotation.y += THREE.MathUtils.degToRad(THREE.MathUtils.clamp(adjustment.yawDegrees ?? 0, -15, 15))
+      alignConnection(part)
+    }
+    const verified = reviewAndRepair(parts)
+    if (verified.issues.some(issue => issue.part && !baseline.issues.some(old => old.code === issue.code && old.part === issue.part))) restoreAssembly(baseline.snapshot, parts)
+    reviewSnapshot.value = original
+    reviewMessage.value = '在线复核完成；变换建议已经过本地装配检查。'
+    reviewDetails.value = [result.summary, ...verified.issues.map(issue => issue.text)]
+    selectModel(selectedModel); frameAssembly()
+  } catch (error) { ElMessage.error(error.message || '在线复核暂不可用，本地校正仍可使用') }
+  finally { visualReviewBusy.value = false }
+}
 
 // 部件库来自程序化建模工厂（含锚点连接接口 userData.attachPoints）
 const parts = WORKSHOP_PARTS
@@ -171,9 +256,11 @@ let resumeGenerationWait = null
 let generationCancelled = false
 const selectedFormat = ref('glb')
 const selectedConnected = ref(false)
+const selectedIsHead=ref(false)
 const bodyHasIntegratedArms = ref(false),scaleBounds=ref({min:.1,max:3})
 
 const modelParams = reactive({
+  neckLift:0,
   scale: 1,
   rotation: { x: 0, y: 0, z: 0 },
   position: { x: 0, y: 0, z: 0 },
@@ -312,6 +399,8 @@ const selectModel = (model) => {
   if (selectionBox) { selectionBox.removeFromParent(); selectionBox.geometry.dispose(); selectionBox.material.dispose(); selectionBox=null }
   selectedModel = model
   selectedConnected.value = !!model?.userData.connection
+  selectedIsHead.value=model?.userData.category==='head'&&!!model?.userData.connection
+  modelParams.neckLift=model?.userData.neckLift||0
   const fit=model?.userData.fittedScale
   scaleBounds.value=model?.userData.category==='head'&&model.userData.connection&&fit?{min:fit*.9,max:fit*1.1}:{min:.1,max:3}
   if (model) {
@@ -387,6 +476,8 @@ const addPart = async (part) => {
   placedModels.push(partObj)
   bodyHasIntegratedArms.value=placedModels.some(m=>m.userData.integratedArms)
   connectAvailableParts(placedModels)
+  reviewSnapshot.value=null
+  if(autoReview.value)runAssemblyReview()
   selectModel(partObj)
   frameAssembly()
   const connected=partObj.userData.connection||placedModels.some(model=>model.userData.connection?.targetUUID===partObj.uuid)
@@ -500,6 +591,7 @@ const animate = () => {
 
   // 参数面板仅作用于当前选中部件（不再强制所有部件统一变形/自转，以保持锚点对位）
   if (selectedModel) {
+    if(selectedModel.userData.category==='head')selectedModel.userData.neckLift=modelParams.neckLift
     if (!selectedModel.userData.connection) selectedModel.position.set(modelParams.position.x, modelParams.position.y, modelParams.position.z)
     selectedModel.scale.setScalar(modelParams.scale)
     selectedModel.rotation.set(
@@ -540,6 +632,7 @@ const clearModels = (notify = true) => {
     modelsGroup.clear()
   }
   placedModels = []
+  reviewSnapshot.value=null;reviewDetails.value=[]
   bodyHasIntegratedArms.value=false
   selectModel(null)
   if (notify) ElMessage.success('模型已清空')
@@ -606,7 +699,7 @@ const startGeneration = async () => {
     placedModels.push(wrap)
     selectModel(wrap)
     generateProgress.value = 100
-    ElMessage.success(task.provider === 'mock' ? '演示阿福模型已加载，使用预设模型展示' : '作品模型已加载')
+    ElMessage.success(task.provider === 'mock' ? '阿福模型已载入' : '作品模型已加载')
   } catch (error) {
     if (!generationCancelled) ElMessage.error(error.message || '模型生成或加载失败，请在个人中心查看任务')
   } finally { isGenerating.value = false }
